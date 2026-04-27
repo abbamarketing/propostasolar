@@ -9,10 +9,21 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PropostasRouteImport } from './routes/propostas'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
+import { Route as ClientesRouteImport } from './routes/clientes'
+import { Route as CadastrosRouteImport } from './routes/cadastros'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PropostasNovaRouteImport } from './routes/propostas.nova'
+import { Route as PropostasIdRouteImport } from './routes/propostas.$id'
 
+const PropostasRoute = PropostasRouteImport.update({
+  id: '/propostas',
+  path: '/propostas',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -23,44 +34,126 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientesRoute = ClientesRouteImport.update({
+  id: '/clientes',
+  path: '/clientes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CadastrosRoute = CadastrosRouteImport.update({
+  id: '/cadastros',
+  path: '/cadastros',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PropostasNovaRoute = PropostasNovaRouteImport.update({
+  id: '/nova',
+  path: '/nova',
+  getParentRoute: () => PropostasRoute,
+} as any)
+const PropostasIdRoute = PropostasIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => PropostasRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/cadastros': typeof CadastrosRoute
+  '/clientes': typeof ClientesRoute
+  '/configuracoes': typeof ConfiguracoesRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/propostas': typeof PropostasRouteWithChildren
+  '/propostas/$id': typeof PropostasIdRoute
+  '/propostas/nova': typeof PropostasNovaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/cadastros': typeof CadastrosRoute
+  '/clientes': typeof ClientesRoute
+  '/configuracoes': typeof ConfiguracoesRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/propostas': typeof PropostasRouteWithChildren
+  '/propostas/$id': typeof PropostasIdRoute
+  '/propostas/nova': typeof PropostasNovaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/cadastros': typeof CadastrosRoute
+  '/clientes': typeof ClientesRoute
+  '/configuracoes': typeof ConfiguracoesRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/propostas': typeof PropostasRouteWithChildren
+  '/propostas/$id': typeof PropostasIdRoute
+  '/propostas/nova': typeof PropostasNovaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/login'
+  fullPaths:
+    | '/'
+    | '/cadastros'
+    | '/clientes'
+    | '/configuracoes'
+    | '/dashboard'
+    | '/login'
+    | '/propostas'
+    | '/propostas/$id'
+    | '/propostas/nova'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/login'
-  id: '__root__' | '/' | '/dashboard' | '/login'
+  to:
+    | '/'
+    | '/cadastros'
+    | '/clientes'
+    | '/configuracoes'
+    | '/dashboard'
+    | '/login'
+    | '/propostas'
+    | '/propostas/$id'
+    | '/propostas/nova'
+  id:
+    | '__root__'
+    | '/'
+    | '/cadastros'
+    | '/clientes'
+    | '/configuracoes'
+    | '/dashboard'
+    | '/login'
+    | '/propostas'
+    | '/propostas/$id'
+    | '/propostas/nova'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CadastrosRoute: typeof CadastrosRoute
+  ClientesRoute: typeof ClientesRoute
+  ConfiguracoesRoute: typeof ConfiguracoesRoute
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
+  PropostasRoute: typeof PropostasRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/propostas': {
+      id: '/propostas'
+      path: '/propostas'
+      fullPath: '/propostas'
+      preLoaderRoute: typeof PropostasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -75,6 +168,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/configuracoes': {
+      id: '/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/configuracoes'
+      preLoaderRoute: typeof ConfiguracoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/clientes': {
+      id: '/clientes'
+      path: '/clientes'
+      fullPath: '/clientes'
+      preLoaderRoute: typeof ClientesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cadastros': {
+      id: '/cadastros'
+      path: '/cadastros'
+      fullPath: '/cadastros'
+      preLoaderRoute: typeof CadastrosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -82,13 +196,45 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/propostas/nova': {
+      id: '/propostas/nova'
+      path: '/nova'
+      fullPath: '/propostas/nova'
+      preLoaderRoute: typeof PropostasNovaRouteImport
+      parentRoute: typeof PropostasRoute
+    }
+    '/propostas/$id': {
+      id: '/propostas/$id'
+      path: '/$id'
+      fullPath: '/propostas/$id'
+      preLoaderRoute: typeof PropostasIdRouteImport
+      parentRoute: typeof PropostasRoute
+    }
   }
 }
 
+interface PropostasRouteChildren {
+  PropostasIdRoute: typeof PropostasIdRoute
+  PropostasNovaRoute: typeof PropostasNovaRoute
+}
+
+const PropostasRouteChildren: PropostasRouteChildren = {
+  PropostasIdRoute: PropostasIdRoute,
+  PropostasNovaRoute: PropostasNovaRoute,
+}
+
+const PropostasRouteWithChildren = PropostasRoute._addFileChildren(
+  PropostasRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CadastrosRoute: CadastrosRoute,
+  ClientesRoute: ClientesRoute,
+  ConfiguracoesRoute: ConfiguracoesRoute,
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
+  PropostasRoute: PropostasRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
