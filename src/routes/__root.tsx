@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Outlet, Link, createRootRouteWithContext, HeadContent, Scripts } from "@tanstack/react-router";
 import { Toaster } from "sonner";
 
+import { AuthProvider } from "@/hooks/use-auth";
 import appCss from "../styles.css?url";
 
 function NotFoundComponent() {
@@ -70,8 +71,10 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
-      <Toaster richColors position="top-right" />
+      <AuthProvider>
+        <Outlet />
+        <Toaster richColors position="top-right" />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

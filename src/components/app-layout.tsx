@@ -1,8 +1,7 @@
-import { Link, useLocation } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import {
   BarChart3,
   BookOpen,
-  Building2,
   ChevronDown,
   FileText,
   LogOut,
@@ -15,6 +14,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
+import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +28,8 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { AppLogo } from "@/components/app-logo";
+import { ProtectedRoute } from "@/components/protected-route";
+import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -48,7 +50,8 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <ProtectedRoute>
+      <div className="min-h-screen bg-background text-foreground">
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex">
         <SidebarContent />
       </aside>
@@ -68,7 +71,8 @@ export function AppLayout({ children }: AppLayoutProps) {
         </header>
         <main>{children}</main>
       </div>
-    </div>
+      </div>
+    </ProtectedRoute>
   );
 }
 
@@ -126,6 +130,8 @@ function SidebarContent({ onNavigate }: SidebarContentProps) {
 
 function UserMenu() {
   const [dark, setDark] = useState(false);
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const isDark = document.documentElement.classList.contains("dark");
@@ -137,16 +143,29 @@ function UserMenu() {
     document.documentElement.classList.toggle("dark", checked);
   }
 
+  async function handleSignOut() {
+    try {
+      await signOut();
+      toast.success("Sessão encerrada com sucesso.");
+      navigate({ to: "/login" });
+    } catch {
+      toast.error("Não foi possível sair da conta.");
+    }
+  }
+
+  const userEmail = user?.email ?? "usuário autenticado";
+  const initials = userEmail.slice(0, 2).toUpperCase();
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button className="mt-5 flex w-full items-center gap-3 rounded-xl border border-sidebar-border bg-sidebar-accent/60 p-3 text-left transition-colors hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring">
           <Avatar className="h-10 w-10 border border-sidebar-border">
-            <AvatarFallback className="bg-primary text-primary-foreground font-bold">ES</AvatarFallback>
+            <AvatarFallback className="bg-primary text-primary-foreground font-bold">{initials}</AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-sidebar-foreground">Vendedor</p>
-            <p className="truncate text-xs text-sidebar-foreground/65">energizasollar@gmail.com</p>
+            <p className="truncate text-xs text-sidebar-foreground/65">{userEmail}</p>
           </div>
           <ChevronDown className="h-4 w-4 text-sidebar-foreground/70" />
         </button>
@@ -165,7 +184,7 @@ function UserMenu() {
           <Switch checked={dark} onCheckedChange={handleThemeChange} aria-label="Alternar modo escuro" />
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem>
+        <DropdownMenuItem onSelect={handleSignOut}>
           <LogOut className="h-4 w-4" />
           Sair
         </DropdownMenuItem>

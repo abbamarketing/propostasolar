@@ -18,6 +18,7 @@ import { Route as CadastrosRouteImport } from './routes/cadastros'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PropostasNovaRouteImport } from './routes/propostas.nova'
 import { Route as PropostasIdRouteImport } from './routes/propostas.$id'
+import { Route as AdminDatabaseStatusRouteImport } from './routes/admin.database-status'
 
 const PropostasRoute = PropostasRouteImport.update({
   id: '/propostas',
@@ -64,6 +65,11 @@ const PropostasIdRoute = PropostasIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => PropostasRoute,
 } as any)
+const AdminDatabaseStatusRoute = AdminDatabaseStatusRouteImport.update({
+  id: '/admin/database-status',
+  path: '/admin/database-status',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -73,6 +79,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/propostas': typeof PropostasRouteWithChildren
+  '/admin/database-status': typeof AdminDatabaseStatusRoute
   '/propostas/$id': typeof PropostasIdRoute
   '/propostas/nova': typeof PropostasNovaRoute
 }
@@ -84,6 +91,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/propostas': typeof PropostasRouteWithChildren
+  '/admin/database-status': typeof AdminDatabaseStatusRoute
   '/propostas/$id': typeof PropostasIdRoute
   '/propostas/nova': typeof PropostasNovaRoute
 }
@@ -96,6 +104,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/propostas': typeof PropostasRouteWithChildren
+  '/admin/database-status': typeof AdminDatabaseStatusRoute
   '/propostas/$id': typeof PropostasIdRoute
   '/propostas/nova': typeof PropostasNovaRoute
 }
@@ -109,6 +118,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/propostas'
+    | '/admin/database-status'
     | '/propostas/$id'
     | '/propostas/nova'
   fileRoutesByTo: FileRoutesByTo
@@ -120,6 +130,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/propostas'
+    | '/admin/database-status'
     | '/propostas/$id'
     | '/propostas/nova'
   id:
@@ -131,6 +142,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/propostas'
+    | '/admin/database-status'
     | '/propostas/$id'
     | '/propostas/nova'
   fileRoutesById: FileRoutesById
@@ -143,6 +155,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
   PropostasRoute: typeof PropostasRouteWithChildren
+  AdminDatabaseStatusRoute: typeof AdminDatabaseStatusRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -210,6 +223,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PropostasIdRouteImport
       parentRoute: typeof PropostasRoute
     }
+    '/admin/database-status': {
+      id: '/admin/database-status'
+      path: '/admin/database-status'
+      fullPath: '/admin/database-status'
+      preLoaderRoute: typeof AdminDatabaseStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -235,6 +255,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
   PropostasRoute: PropostasRouteWithChildren,
+  AdminDatabaseStatusRoute: AdminDatabaseStatusRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
