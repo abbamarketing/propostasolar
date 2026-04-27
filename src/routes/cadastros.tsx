@@ -151,11 +151,16 @@ const tariffSchema = z.object({
   atualizado_em: z.date({ required_error: "Selecione a data." }),
 });
 
-type ModuleForm = z.infer<typeof moduleSchema>;
-type InverterForm = z.infer<typeof inverterSchema>;
-type StructureForm = z.infer<typeof structureSchema>;
-type CityForm = z.infer<typeof citySchema>;
-type TariffForm = z.infer<typeof tariffSchema>;
+type ModuleForm = z.output<typeof moduleSchema>;
+type ModuleFormInput = z.input<typeof moduleSchema>;
+type InverterForm = z.output<typeof inverterSchema>;
+type InverterFormInput = z.input<typeof inverterSchema>;
+type StructureForm = z.output<typeof structureSchema>;
+type StructureFormInput = z.input<typeof structureSchema>;
+type CityForm = z.output<typeof citySchema>;
+type CityFormInput = z.input<typeof citySchema>;
+type TariffForm = z.output<typeof tariffSchema>;
+type TariffFormInput = z.input<typeof tariffSchema>;
 
 const estados = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
 const tecnologias = ["Monocristalino", "Policristalino", "Bifacial", "PERC", "TopCon", "Outro"];
