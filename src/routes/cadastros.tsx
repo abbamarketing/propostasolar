@@ -48,6 +48,12 @@ import {
   useUpdateModule,
   useUpdateStructure,
   useUpdateTariff,
+  type CityInsert,
+  type CityRow,
+  type InverterRow,
+  type ModuleRow,
+  type StructureRow,
+  type TariffRow,
 } from "@/hooks/use-catalog-data";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -76,13 +82,6 @@ export const Route = createFileRoute("/cadastros")({
   }),
   component: CadastrosPage,
 });
-
-type ModuleRow = Awaited<ReturnType<typeof supabase.from<"products_modules">>>;
-type Module = NonNullable<Awaited<ReturnType<typeof useModules>>["data"]>[number];
-type Inverter = NonNullable<Awaited<ReturnType<typeof useInverters>>["data"]>[number];
-type Structure = NonNullable<Awaited<ReturnType<typeof useStructures>>["data"]>[number];
-type City = NonNullable<Awaited<ReturnType<typeof useCities>>["data"]>[number];
-type Tariff = NonNullable<Awaited<ReturnType<typeof useTariffs>>["data"]>[number];
 
 const numberFromInput = z.coerce.number({ invalid_type_error: "Informe um número válido." });
 const moduleSchema = z.object({
@@ -215,7 +214,7 @@ function CadastrosPage() {
     <AppLayout>
       <PageHeader title="Cadastros" subtitle="Mantenha catálogos técnicos e comerciais usados nas propostas." />
       <section className="p-4 md:p-8">
-        <Tabs value={tab} onValueChange={(value) => navigate({ search: (prev) => ({ ...prev, tab: value as CatalogTab }) })}>
+        <Tabs value={tab} onValueChange={(value) => navigate({ search: (prev: { tab?: CatalogTab }) => ({ ...prev, tab: value as CatalogTab }) })}>
           <TabsList className="mb-6 h-auto flex-wrap justify-start">
             {tabs.map((item) => <TabsTrigger key={item} value={item}>{tabLabels[item]}</TabsTrigger>)}
           </TabsList>
