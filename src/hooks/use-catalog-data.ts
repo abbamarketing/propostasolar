@@ -2,9 +2,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
-type Database = typeof supabase extends { from: (table: infer _T) => unknown } ? unknown : never;
-type ModuleRow = Awaited<ReturnType<typeof supabase.from<"products_modules">>> extends never ? never : unknown;
-
 type ListParams = {
   search?: string;
   ativo?: boolean;
