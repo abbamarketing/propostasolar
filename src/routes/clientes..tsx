@@ -17,7 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useClient, useClientDocuments, useSoftDeleteClient, useUploadClientDocument, type DocumentCategory } from "@/hooks/use-clients";
 
-export const Route = createFileRoute("/clientes/$id")({
+export const Route = createFileRoute("/clientes/")({
   head: () => ({ meta: [{ title: "Detalhe do cliente — ENERGIZA SOLLAR" }, { name: "description", content: "Dados, propostas e documentos do cliente." }] }),
   component: ClientDetailPage,
 });
