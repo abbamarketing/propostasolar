@@ -19,9 +19,9 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PropostasNovaRouteImport } from './routes/propostas.nova'
 import { Route as PropostasIdRouteImport } from './routes/propostas.$id'
 import { Route as ClientesNovoRouteImport } from './routes/clientes.novo'
-import { Route as ClientesEditarRouteImport } from './routes/clientes..editar'
+import { Route as ClientesIdRouteImport } from './routes/clientes.$id'
 import { Route as AdminDatabaseStatusRouteImport } from './routes/admin.database-status'
-import { Route as ClientesRouteImport } from './routes/clientes.'
+import { Route as ClientesIdEditarRouteImport } from './routes/clientes.$id.editar'
 
 const PropostasRoute = PropostasRouteImport.update({
   id: '/propostas',
@@ -73,9 +73,9 @@ const ClientesNovoRoute = ClientesNovoRouteImport.update({
   path: '/novo',
   getParentRoute: () => ClientesRoute,
 } as any)
-const ClientesEditarRoute = ClientesEditarRouteImport.update({
-  id: '/editar',
-  path: '/editar',
+const ClientesIdRoute = ClientesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
   getParentRoute: () => ClientesRoute,
 } as any)
 const AdminDatabaseStatusRoute = AdminDatabaseStatusRouteImport.update({
@@ -83,10 +83,10 @@ const AdminDatabaseStatusRoute = AdminDatabaseStatusRouteImport.update({
   path: '/admin/database-status',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ClientesRoute = ClientesRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => ClientesRoute,
+const ClientesIdEditarRoute = ClientesIdEditarRouteImport.update({
+  id: '/editar',
+  path: '/editar',
+  getParentRoute: () => ClientesIdRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -97,26 +97,27 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/propostas': typeof PropostasRouteWithChildren
-  '/clientes/': typeof ClientesRoute
   '/admin/database-status': typeof AdminDatabaseStatusRoute
-  '/clientes/editar': typeof ClientesEditarRoute
+  '/clientes/$id': typeof ClientesIdRouteWithChildren
   '/clientes/novo': typeof ClientesNovoRoute
   '/propostas/$id': typeof PropostasIdRoute
   '/propostas/nova': typeof PropostasNovaRoute
+  '/clientes/$id/editar': typeof ClientesIdEditarRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/cadastros': typeof CadastrosRoute
+  '/clientes': typeof ClientesRouteWithChildren
   '/configuracoes': typeof ConfiguracoesRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/propostas': typeof PropostasRouteWithChildren
-  '/clientes': typeof ClientesRoute
   '/admin/database-status': typeof AdminDatabaseStatusRoute
-  '/clientes/editar': typeof ClientesEditarRoute
+  '/clientes/$id': typeof ClientesIdRouteWithChildren
   '/clientes/novo': typeof ClientesNovoRoute
   '/propostas/$id': typeof PropostasIdRoute
   '/propostas/nova': typeof PropostasNovaRoute
+  '/clientes/$id/editar': typeof ClientesIdEditarRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -127,12 +128,12 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/propostas': typeof PropostasRouteWithChildren
-  '/clientes/': typeof ClientesRoute
   '/admin/database-status': typeof AdminDatabaseStatusRoute
-  '/clientes/editar': typeof ClientesEditarRoute
+  '/clientes/$id': typeof ClientesIdRouteWithChildren
   '/clientes/novo': typeof ClientesNovoRoute
   '/propostas/$id': typeof PropostasIdRoute
   '/propostas/nova': typeof PropostasNovaRoute
+  '/clientes/$id/editar': typeof ClientesIdEditarRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -144,26 +145,27 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/propostas'
-    | '/clientes/'
     | '/admin/database-status'
-    | '/clientes/editar'
+    | '/clientes/$id'
     | '/clientes/novo'
     | '/propostas/$id'
     | '/propostas/nova'
+    | '/clientes/$id/editar'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/cadastros'
+    | '/clientes'
     | '/configuracoes'
     | '/dashboard'
     | '/login'
     | '/propostas'
-    | '/clientes'
     | '/admin/database-status'
-    | '/clientes/editar'
+    | '/clientes/$id'
     | '/clientes/novo'
     | '/propostas/$id'
     | '/propostas/nova'
+    | '/clientes/$id/editar'
   id:
     | '__root__'
     | '/'
@@ -173,12 +175,12 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/propostas'
-    | '/clientes/'
     | '/admin/database-status'
-    | '/clientes/editar'
+    | '/clientes/$id'
     | '/clientes/novo'
     | '/propostas/$id'
     | '/propostas/nova'
+    | '/clientes/$id/editar'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -264,11 +266,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientesNovoRouteImport
       parentRoute: typeof ClientesRoute
     }
-    '/clientes/editar': {
-      id: '/clientes/editar'
-      path: '/editar'
-      fullPath: '/clientes/editar'
-      preLoaderRoute: typeof ClientesEditarRouteImport
+    '/clientes/$id': {
+      id: '/clientes/$id'
+      path: '/$id'
+      fullPath: '/clientes/$id'
+      preLoaderRoute: typeof ClientesIdRouteImport
       parentRoute: typeof ClientesRoute
     }
     '/admin/database-status': {
@@ -278,25 +280,35 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDatabaseStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/clientes/': {
-      id: '/clientes/'
-      path: '/'
-      fullPath: '/clientes/'
-      preLoaderRoute: typeof ClientesRouteImport
-      parentRoute: typeof ClientesRoute
+    '/clientes/$id/editar': {
+      id: '/clientes/$id/editar'
+      path: '/editar'
+      fullPath: '/clientes/$id/editar'
+      preLoaderRoute: typeof ClientesIdEditarRouteImport
+      parentRoute: typeof ClientesIdRoute
     }
   }
 }
 
+interface ClientesIdRouteChildren {
+  ClientesIdEditarRoute: typeof ClientesIdEditarRoute
+}
+
+const ClientesIdRouteChildren: ClientesIdRouteChildren = {
+  ClientesIdEditarRoute: ClientesIdEditarRoute,
+}
+
+const ClientesIdRouteWithChildren = ClientesIdRoute._addFileChildren(
+  ClientesIdRouteChildren,
+)
+
 interface ClientesRouteChildren {
-  ClientesRoute: typeof ClientesRoute
-  ClientesEditarRoute: typeof ClientesEditarRoute
+  ClientesIdRoute: typeof ClientesIdRouteWithChildren
   ClientesNovoRoute: typeof ClientesNovoRoute
 }
 
 const ClientesRouteChildren: ClientesRouteChildren = {
-  ClientesRoute: ClientesRoute,
-  ClientesEditarRoute: ClientesEditarRoute,
+  ClientesIdRoute: ClientesIdRouteWithChildren,
   ClientesNovoRoute: ClientesNovoRoute,
 }
 
