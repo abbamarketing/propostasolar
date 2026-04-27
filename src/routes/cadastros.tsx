@@ -6,7 +6,7 @@ import { format } from "date-fns";
 import { CalendarIcon, Cpu, MapPin, PanelTop, PlugZap, Receipt, Warehouse } from "lucide-react";
 import Papa from "papaparse";
 import { useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type FieldPath, type FieldValues, type UseFormReturn } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { AppLayout } from "@/components/app-layout";
@@ -91,11 +91,11 @@ const moduleSchema = z.object({
   potencia_w: numberFromInput.int("Informe um número inteiro.").min(100, "Mínimo 100 W.").max(700, "Máximo 700 W."),
   tecnologia: z.string().min(1, "Selecione a tecnologia."),
   eficiencia_pct: numberFromInput.min(10, "Mínimo 10%.").max(25, "Máximo 25%."),
-  garantia_produto_anos: numberFromInput.int().min(1).default(12),
-  garantia_geracao_anos: numberFromInput.int().min(1).default(25),
+  garantia_produto_anos: numberFromInput.int().min(1),
+  garantia_geracao_anos: numberFromInput.int().min(1),
   preco_custo: numberFromInput.positive("Informe um valor maior que zero."),
   preco_venda: numberFromInput.positive("Informe um valor maior que zero."),
-  ativo: z.boolean().default(true),
+  ativo: z.boolean(),
 }).refine((data) => data.preco_venda > data.preco_custo, { path: ["preco_venda"], message: "Preço de venda deve ser maior que o custo." });
 
 const inverterSchema = z.object({
@@ -103,13 +103,13 @@ const inverterSchema = z.object({
   marca: z.string().min(2, "Informe pelo menos 2 caracteres."),
   modelo: z.string().min(2, "Informe pelo menos 2 caracteres."),
   potencia_kw: numberFromInput.min(0.5, "Mínimo 0,5 kW.").max(500, "Máximo 500 kW."),
-  mppts: numberFromInput.int().min(1).max(12).default(2),
+  mppts: numberFromInput.int().min(1).max(12),
   fases: z.enum(["mono", "bi", "tri"], { required_error: "Selecione as fases." }),
   tipo: z.enum(["string", "microinversor", "hibrido"], { required_error: "Selecione o tipo." }),
-  garantia_anos: numberFromInput.int().min(1).default(10),
+  garantia_anos: numberFromInput.int().min(1),
   preco_custo: numberFromInput.positive("Informe um valor maior que zero."),
   preco_venda: numberFromInput.positive("Informe um valor maior que zero."),
-  ativo: z.boolean().default(true),
+  ativo: z.boolean(),
 }).refine((data) => data.preco_venda > data.preco_custo, { path: ["preco_venda"], message: "Preço de venda deve ser maior que o custo." });
 
 const structureSchema = z.object({
@@ -126,18 +126,18 @@ const citySchema = z.object({
   cidade: z.string().min(2, "Informe a cidade."),
   uf: z.string().length(2, "Selecione a UF."),
   hsp_medio: numberFromInput.min(3, "Mínimo 3,0.").max(7.5, "Máximo 7,5."),
-  hsp_jan: numberFromInput.min(3).max(7.5).optional().or(z.literal("").transform(() => undefined)),
-  hsp_fev: numberFromInput.min(3).max(7.5).optional().or(z.literal("").transform(() => undefined)),
-  hsp_mar: numberFromInput.min(3).max(7.5).optional().or(z.literal("").transform(() => undefined)),
-  hsp_abr: numberFromInput.min(3).max(7.5).optional().or(z.literal("").transform(() => undefined)),
-  hsp_mai: numberFromInput.min(3).max(7.5).optional().or(z.literal("").transform(() => undefined)),
-  hsp_jun: numberFromInput.min(3).max(7.5).optional().or(z.literal("").transform(() => undefined)),
-  hsp_jul: numberFromInput.min(3).max(7.5).optional().or(z.literal("").transform(() => undefined)),
-  hsp_ago: numberFromInput.min(3).max(7.5).optional().or(z.literal("").transform(() => undefined)),
-  hsp_set: numberFromInput.min(3).max(7.5).optional().or(z.literal("").transform(() => undefined)),
-  hsp_out: numberFromInput.min(3).max(7.5).optional().or(z.literal("").transform(() => undefined)),
-  hsp_nov: numberFromInput.min(3).max(7.5).optional().or(z.literal("").transform(() => undefined)),
-  hsp_dez: numberFromInput.min(3).max(7.5).optional().or(z.literal("").transform(() => undefined)),
+  hsp_jan: numberFromInput.min(3).max(7.5).optional(),
+  hsp_fev: numberFromInput.min(3).max(7.5).optional(),
+  hsp_mar: numberFromInput.min(3).max(7.5).optional(),
+  hsp_abr: numberFromInput.min(3).max(7.5).optional(),
+  hsp_mai: numberFromInput.min(3).max(7.5).optional(),
+  hsp_jun: numberFromInput.min(3).max(7.5).optional(),
+  hsp_jul: numberFromInput.min(3).max(7.5).optional(),
+  hsp_ago: numberFromInput.min(3).max(7.5).optional(),
+  hsp_set: numberFromInput.min(3).max(7.5).optional(),
+  hsp_out: numberFromInput.min(3).max(7.5).optional(),
+  hsp_nov: numberFromInput.min(3).max(7.5).optional(),
+  hsp_dez: numberFromInput.min(3).max(7.5).optional(),
 });
 
 const tariffSchema = z.object({
@@ -170,6 +170,8 @@ function StatusBadge({ active }: { active?: boolean | null }) {
   return <Badge variant={active ? "default" : "secondary"}>{active ? "Ativo" : "Inativo"}</Badge>;
 }
 
+type CatalogForm<T extends FieldValues> = UseFormReturn<T>;
+
 function SelectField({ value, onChange, placeholder, options }: { value?: string; onChange: (value: string) => void; placeholder: string; options: { value: string; label: string }[] }) {
   return (
     <Select value={value} onValueChange={onChange}>
@@ -180,14 +182,16 @@ function SelectField({ value, onChange, placeholder, options }: { value?: string
 }
 
 function NumberField({ field, placeholder }: { field: { value: unknown; onChange: (value: string) => void; onBlur: () => void; name: string; ref: React.Ref<HTMLInputElement> }; placeholder?: string }) {
-  return <Input type="number" step="any" placeholder={placeholder} value={String(field.value ?? "")} onChange={(event) => field.onChange(event.target.value)} onBlur={field.onBlur} name={field.name} ref={field.ref} />;
+  return <Input type="number" step="0.01" placeholder={placeholder} value={String(field.value ?? "")} onChange={(event) => field.onChange(event.target.value)} onBlur={field.onBlur} name={field.name} ref={field.ref} />;
 }
 
 function useCatalogAccess() {
   return useQuery({
     queryKey: ["catalog-access"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("user_roles").select("role").in("role", ["admin", "gestor"]);
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", authData.user.id).in("role", ["admin", "gestor"]);
       if (error) throw error;
       return data.length > 0;
     },
@@ -262,7 +266,7 @@ function CityDialog({open,row,onOpenChange,onSubmit}:{open:boolean;row:CityRow|n
 function TariffsTab(){const[search,setSearch]=useState("");const[editing,setEditing]=useState<TariffRow|null>(null);const[open,setOpen]=useState(false);const query=useTariffs({search:useDebounce(search,300)});const create=useCreateTariff();const update=useUpdateTariff();const remove=useDeleteTariff();return <><CrudTable title="Tarifas" newLabel="Nova tarifa" search={search} onSearchChange={setSearch} showActiveFilter={false} rows={query.data??[]} isLoading={query.isLoading} emptyIcon={Receipt} emptyTitle="Nenhuma tarifa encontrada" emptyDescription="Cadastre tarifas por concessionária." onNew={()=>{setEditing(null);setOpen(true)}} onEdit={(r)=>{setEditing(r);setOpen(true)}} onDelete={(r)=>remove.mutate(r.id)} deleteLabel="Remover" searchPlaceholder="Buscar por concessionária ou UF" columns={[{header:"Concessionária",cell:r=>r.concessionaria},{header:"UF",cell:r=>r.uf},{header:"Classe",cell:r=>classeLabels[r.classe??""]??"—"},{header:"Valor R$/kWh",cell:r=>r.valor_kwh.toLocaleString("pt-BR",{style:"currency",currency:"BRL",minimumFractionDigits:4})},{header:"Bandeira",cell:r=>bandeiraLabels[r.bandeira_atual??""]??"—"},{header:"Atualizado em",cell:r=>format(new Date(`${r.atualizado_em}T00:00:00`),"dd/MM/yyyy")}]} /><TariffDialog open={open} row={editing} onOpenChange={setOpen} onSubmit={async(v)=>{const payload={...v,atualizado_em:format(v.atualizado_em,"yyyy-MM-dd")};editing?await update.mutateAsync({id:editing.id,...payload}):await create.mutateAsync(payload);setOpen(false)}}/></>}
 function TariffDialog({open,row,onOpenChange,onSubmit}:{open:boolean;row:TariffRow|null;onOpenChange:(v:boolean)=>void;onSubmit:(v:TariffForm)=>Promise<void>}){const form=useForm<TariffForm>({resolver:zodResolver(tariffSchema),values:{concessionaria:row?.concessionaria??"",uf:row?.uf??"MG",classe:(row?.classe as TariffForm["classe"])??"residencial",subgrupo:row?.subgrupo??"",valor_kwh:row?.valor_kwh??0.985,bandeira_atual:(row?.bandeira_atual as TariffForm["bandeira_atual"])??"verde",atualizado_em:row?.atualizado_em?new Date(`${row.atualizado_em}T00:00:00`):new Date()}});return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent><DialogHeader><DialogTitle>{row?"Editar":"Nova"} tarifa</DialogTitle></DialogHeader><Form {...form}><form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4"><TextField form={form} name="concessionaria" label="Concessionária"/><SelectFormField form={form} name="uf" label="UF" options={estados.map(x=>({value:x,label:x}))}/><SelectFormField form={form} name="classe" label="Classe" options={Object.entries(classeLabels).map(([value,label])=>({value,label}))}/><TextField form={form} name="subgrupo" label="Subgrupo"/><MoneyInput control={form.control} name="valor_kwh" label="Valor R$/kWh" decimals={4}/><SelectFormField form={form} name="bandeira_atual" label="Bandeira" options={Object.entries(bandeiraLabels).map(([value,label])=>({value,label}))}/><DateField form={form}/><DialogFooter><Button type="submit">Salvar</Button></DialogFooter></form></Form></DialogContent></Dialog>}
 
-function TextField({form,name,label,type="text"}:{form:any;name:string;label:string;type?:string}){return <FormField control={form.control} name={name} render={({field})=><FormItem><FormLabel>{label}</FormLabel><FormControl>{type==="number"?<NumberField field={field}/>:<Input {...field} value={field.value??""}/>}</FormControl><FormMessage/></FormItem>}/>}
-function BoolField({form,name,label}:{form:any;name:string;label:string}){return <FormField control={form.control} name={name} render={({field})=><FormItem className="flex items-center justify-between rounded-xl border p-3"><FormLabel>{label}</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange}/></FormControl></FormItem>}/>}
-function SelectFormField({form,name,label,options}:{form:any;name:string;label:string;options:{value:string;label:string}[]}){return <FormField control={form.control} name={name} render={({field})=><FormItem><FormLabel>{label}</FormLabel><SelectField value={field.value} onChange={field.onChange} placeholder="Selecione" options={options}/><FormMessage/></FormItem>}/>}
-function DateField({form}:{form:any}){return <FormField control={form.control} name="atualizado_em" render={({field})=><FormItem className="flex flex-col"><FormLabel>Atualizado em</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant="outline" className={cn("justify-start text-left font-normal",!field.value&&"text-muted-foreground")}><CalendarIcon className="h-4 w-4"/>{field.value?format(field.value,"dd/MM/yyyy"):"Selecione"}</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus className="p-3 pointer-events-auto"/></PopoverContent></Popover><FormMessage/></FormItem>}/>}
+function TextField<T extends FieldValues>({form,name,label,type="text"}:{form:CatalogForm<T>;name:FieldPath<T>;label:string;type?:string}){return <FormField control={form.control} name={name} render={({field})=><FormItem><FormLabel>{label}</FormLabel><FormControl>{type==="number"?<NumberField field={field}/>:<Input {...field} value={String(field.value??"")}/>}</FormControl><FormMessage/></FormItem>}/>}
+function BoolField<T extends FieldValues>({form,name,label}:{form:CatalogForm<T>;name:FieldPath<T>;label:string}){return <FormField control={form.control} name={name} render={({field})=><FormItem className="flex items-center justify-between rounded-xl border p-3"><FormLabel>{label}</FormLabel><FormControl><Switch checked={Boolean(field.value)} onCheckedChange={field.onChange}/></FormControl></FormItem>}/>}
+function SelectFormField<T extends FieldValues>({form,name,label,options}:{form:CatalogForm<T>;name:FieldPath<T>;label:string;options:{value:string;label:string}[]}){return <FormField control={form.control} name={name} render={({field})=><FormItem><FormLabel>{label}</FormLabel><SelectField value={String(field.value??"")} onChange={field.onChange} placeholder="Selecione" options={options}/><FormMessage/></FormItem>}/>}
+function DateField({form}:{form:CatalogForm<TariffForm>}){return <FormField control={form.control} name="atualizado_em" render={({field})=><FormItem className="flex flex-col"><FormLabel>Atualizado em</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant="outline" className={cn("justify-start text-left font-normal",!field.value&&"text-muted-foreground")}><CalendarIcon className="h-4 w-4"/>{field.value?format(field.value,"dd/MM/yyyy"):"Selecione"}</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus className="p-3 pointer-events-auto"/></PopoverContent></Popover><FormMessage/></FormItem>}/>}
