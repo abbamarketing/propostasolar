@@ -189,7 +189,9 @@ function useCatalogAccess() {
   return useQuery({
     queryKey: ["catalog-access"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("user_roles").select("role").in("role", ["admin", "gestor"]);
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", authData.user.id).in("role", ["admin", "gestor"]);
       if (error) throw error;
       return data.length > 0;
     },
