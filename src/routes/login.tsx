@@ -4,6 +4,7 @@ import { Lock, Mail, SunMedium } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
+import { useAuth } from "@/hooks/use-auth";
 import { AppLogo } from "@/components/app-logo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,16 +32,22 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
+  const { signIn } = useAuth();
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "" },
   });
 
-  function onSubmit() {
-    toast.success("Login simulado com sucesso.", {
-      description: "A autenticação real será conectada depois.",
-    });
-    navigate({ to: "/dashboard" });
+  async function onSubmit(values: LoginForm) {
+    try {
+      await signIn(values.email, values.password);
+      toast.success("Login realizado com sucesso.");
+      navigate({ to: "/dashboard" });
+    } catch {
+      toast.error("Não foi possível entrar.", {
+        description: "Confira seu e-mail, senha e confirmação de cadastro.",
+      });
+    }
   }
 
   return (
@@ -94,8 +101,8 @@ function LoginPage() {
                   Esqueci minha senha
                 </button>
               </div>
-              <Button type="submit" className="h-11 w-full">
-                Entrar
+              <Button type="submit" className="h-11 w-full" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? "Entrando..." : "Entrar"}
               </Button>
             </form>
           </CardContent>
