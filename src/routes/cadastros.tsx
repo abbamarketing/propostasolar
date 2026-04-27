@@ -6,7 +6,7 @@ import { format } from "date-fns";
 import { CalendarIcon, Cpu, MapPin, PanelTop, PlugZap, Receipt, Warehouse } from "lucide-react";
 import Papa from "papaparse";
 import { useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type FieldPath, type FieldValues, type UseFormReturn } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { AppLayout } from "@/components/app-layout";
@@ -180,7 +180,7 @@ function SelectField({ value, onChange, placeholder, options }: { value?: string
 }
 
 function NumberField({ field, placeholder }: { field: { value: unknown; onChange: (value: string) => void; onBlur: () => void; name: string; ref: React.Ref<HTMLInputElement> }; placeholder?: string }) {
-  return <Input type="number" step="any" placeholder={placeholder} value={String(field.value ?? "")} onChange={(event) => field.onChange(event.target.value)} onBlur={field.onBlur} name={field.name} ref={field.ref} />;
+  return <Input type="number" step="0.01" placeholder={placeholder} value={String(field.value ?? "")} onChange={(event) => field.onChange(event.target.value)} onBlur={field.onBlur} name={field.name} ref={field.ref} />;
 }
 
 function useCatalogAccess() {
