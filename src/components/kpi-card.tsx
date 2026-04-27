@@ -1,12 +1,12 @@
+import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { ArrowUpRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
 
 type KpiCardProps = {
   title: string;
   icon: LucideIcon;
-  value: React.ReactNode;
+  value: ReactNode;
   subtitle: string;
   trend?: string;
 };
@@ -27,7 +27,7 @@ export function KpiCard({ title, icon: Icon, value, subtitle, trend }: KpiCardPr
         <div className="mt-5 flex items-center justify-between gap-3 text-sm">
           <span className="text-muted-foreground">{subtitle}</span>
           {trend ? (
-            <span className={cn("inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 font-semibold text-primary")}>
+            <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 font-semibold text-primary">
               <ArrowUpRight className="h-3.5 w-3.5" />
               {trend}
             </span>
