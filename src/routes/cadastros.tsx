@@ -91,11 +91,11 @@ const moduleSchema = z.object({
   potencia_w: numberFromInput.int("Informe um número inteiro.").min(100, "Mínimo 100 W.").max(700, "Máximo 700 W."),
   tecnologia: z.string().min(1, "Selecione a tecnologia."),
   eficiencia_pct: numberFromInput.min(10, "Mínimo 10%.").max(25, "Máximo 25%."),
-  garantia_produto_anos: numberFromInput.int().min(1).default(12),
-  garantia_geracao_anos: numberFromInput.int().min(1).default(25),
+  garantia_produto_anos: numberFromInput.int().min(1),
+  garantia_geracao_anos: numberFromInput.int().min(1),
   preco_custo: numberFromInput.positive("Informe um valor maior que zero."),
   preco_venda: numberFromInput.positive("Informe um valor maior que zero."),
-  ativo: z.boolean().default(true),
+  ativo: z.boolean(),
 }).refine((data) => data.preco_venda > data.preco_custo, { path: ["preco_venda"], message: "Preço de venda deve ser maior que o custo." });
 
 const inverterSchema = z.object({
@@ -103,13 +103,13 @@ const inverterSchema = z.object({
   marca: z.string().min(2, "Informe pelo menos 2 caracteres."),
   modelo: z.string().min(2, "Informe pelo menos 2 caracteres."),
   potencia_kw: numberFromInput.min(0.5, "Mínimo 0,5 kW.").max(500, "Máximo 500 kW."),
-  mppts: numberFromInput.int().min(1).max(12).default(2),
+  mppts: numberFromInput.int().min(1).max(12),
   fases: z.enum(["mono", "bi", "tri"], { required_error: "Selecione as fases." }),
   tipo: z.enum(["string", "microinversor", "hibrido"], { required_error: "Selecione o tipo." }),
-  garantia_anos: numberFromInput.int().min(1).default(10),
+  garantia_anos: numberFromInput.int().min(1),
   preco_custo: numberFromInput.positive("Informe um valor maior que zero."),
   preco_venda: numberFromInput.positive("Informe um valor maior que zero."),
-  ativo: z.boolean().default(true),
+  ativo: z.boolean(),
 }).refine((data) => data.preco_venda > data.preco_custo, { path: ["preco_venda"], message: "Preço de venda deve ser maior que o custo." });
 
 const structureSchema = z.object({
