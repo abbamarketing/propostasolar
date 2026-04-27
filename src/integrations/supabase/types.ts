@@ -71,6 +71,48 @@ export type Database = {
         }
         Relationships: []
       }
+      client_documents: {
+        Row: {
+          categoria: string
+          client_id: string
+          company_id: string
+          created_at: string
+          id: string
+          mime_type: string | null
+          nome_arquivo: string
+          storage_path: string
+          tamanho_bytes: number | null
+          uploaded_by: string | null
+          url: string
+        }
+        Insert: {
+          categoria?: string
+          client_id: string
+          company_id: string
+          created_at?: string
+          id?: string
+          mime_type?: string | null
+          nome_arquivo: string
+          storage_path: string
+          tamanho_bytes?: number | null
+          uploaded_by?: string | null
+          url: string
+        }
+        Update: {
+          categoria?: string
+          client_id?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          mime_type?: string | null
+          nome_arquivo?: string
+          storage_path?: string
+          tamanho_bytes?: number | null
+          uploaded_by?: string | null
+          url?: string
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           company_id: string
@@ -81,6 +123,7 @@ export type Database = {
           cpf_cnpj: string
           created_at: string
           created_by: string | null
+          deleted_at: string | null
           email: string | null
           endereco_bairro: string | null
           endereco_cep: string | null
@@ -111,6 +154,7 @@ export type Database = {
           cpf_cnpj: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           email?: string | null
           endereco_bairro?: string | null
           endereco_cep?: string | null
@@ -141,6 +185,7 @@ export type Database = {
           cpf_cnpj?: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           email?: string | null
           endereco_bairro?: string | null
           endereco_cep?: string | null
