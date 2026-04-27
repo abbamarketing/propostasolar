@@ -18,7 +18,10 @@ import { Route as CadastrosRouteImport } from './routes/cadastros'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PropostasNovaRouteImport } from './routes/propostas.nova'
 import { Route as PropostasIdRouteImport } from './routes/propostas.$id'
+import { Route as ClientesNovoRouteImport } from './routes/clientes.novo'
+import { Route as ClientesIdRouteImport } from './routes/clientes.$id'
 import { Route as AdminDatabaseStatusRouteImport } from './routes/admin.database-status'
+import { Route as ClientesIdEditarRouteImport } from './routes/clientes.$id.editar'
 
 const PropostasRoute = PropostasRouteImport.update({
   id: '/propostas',
@@ -65,48 +68,72 @@ const PropostasIdRoute = PropostasIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => PropostasRoute,
 } as any)
+const ClientesNovoRoute = ClientesNovoRouteImport.update({
+  id: '/novo',
+  path: '/novo',
+  getParentRoute: () => ClientesRoute,
+} as any)
+const ClientesIdRoute = ClientesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ClientesRoute,
+} as any)
 const AdminDatabaseStatusRoute = AdminDatabaseStatusRouteImport.update({
   id: '/admin/database-status',
   path: '/admin/database-status',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ClientesIdEditarRoute = ClientesIdEditarRouteImport.update({
+  id: '/editar',
+  path: '/editar',
+  getParentRoute: () => ClientesIdRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/cadastros': typeof CadastrosRoute
-  '/clientes': typeof ClientesRoute
+  '/clientes': typeof ClientesRouteWithChildren
   '/configuracoes': typeof ConfiguracoesRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/propostas': typeof PropostasRouteWithChildren
   '/admin/database-status': typeof AdminDatabaseStatusRoute
+  '/clientes/$id': typeof ClientesIdRouteWithChildren
+  '/clientes/novo': typeof ClientesNovoRoute
   '/propostas/$id': typeof PropostasIdRoute
   '/propostas/nova': typeof PropostasNovaRoute
+  '/clientes/$id/editar': typeof ClientesIdEditarRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/cadastros': typeof CadastrosRoute
-  '/clientes': typeof ClientesRoute
+  '/clientes': typeof ClientesRouteWithChildren
   '/configuracoes': typeof ConfiguracoesRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/propostas': typeof PropostasRouteWithChildren
   '/admin/database-status': typeof AdminDatabaseStatusRoute
+  '/clientes/$id': typeof ClientesIdRouteWithChildren
+  '/clientes/novo': typeof ClientesNovoRoute
   '/propostas/$id': typeof PropostasIdRoute
   '/propostas/nova': typeof PropostasNovaRoute
+  '/clientes/$id/editar': typeof ClientesIdEditarRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/cadastros': typeof CadastrosRoute
-  '/clientes': typeof ClientesRoute
+  '/clientes': typeof ClientesRouteWithChildren
   '/configuracoes': typeof ConfiguracoesRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/propostas': typeof PropostasRouteWithChildren
   '/admin/database-status': typeof AdminDatabaseStatusRoute
+  '/clientes/$id': typeof ClientesIdRouteWithChildren
+  '/clientes/novo': typeof ClientesNovoRoute
   '/propostas/$id': typeof PropostasIdRoute
   '/propostas/nova': typeof PropostasNovaRoute
+  '/clientes/$id/editar': typeof ClientesIdEditarRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -119,8 +146,11 @@ export interface FileRouteTypes {
     | '/login'
     | '/propostas'
     | '/admin/database-status'
+    | '/clientes/$id'
+    | '/clientes/novo'
     | '/propostas/$id'
     | '/propostas/nova'
+    | '/clientes/$id/editar'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -131,8 +161,11 @@ export interface FileRouteTypes {
     | '/login'
     | '/propostas'
     | '/admin/database-status'
+    | '/clientes/$id'
+    | '/clientes/novo'
     | '/propostas/$id'
     | '/propostas/nova'
+    | '/clientes/$id/editar'
   id:
     | '__root__'
     | '/'
@@ -143,14 +176,17 @@ export interface FileRouteTypes {
     | '/login'
     | '/propostas'
     | '/admin/database-status'
+    | '/clientes/$id'
+    | '/clientes/novo'
     | '/propostas/$id'
     | '/propostas/nova'
+    | '/clientes/$id/editar'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CadastrosRoute: typeof CadastrosRoute
-  ClientesRoute: typeof ClientesRoute
+  ClientesRoute: typeof ClientesRouteWithChildren
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
@@ -223,6 +259,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PropostasIdRouteImport
       parentRoute: typeof PropostasRoute
     }
+    '/clientes/novo': {
+      id: '/clientes/novo'
+      path: '/novo'
+      fullPath: '/clientes/novo'
+      preLoaderRoute: typeof ClientesNovoRouteImport
+      parentRoute: typeof ClientesRoute
+    }
+    '/clientes/$id': {
+      id: '/clientes/$id'
+      path: '/$id'
+      fullPath: '/clientes/$id'
+      preLoaderRoute: typeof ClientesIdRouteImport
+      parentRoute: typeof ClientesRoute
+    }
     '/admin/database-status': {
       id: '/admin/database-status'
       path: '/admin/database-status'
@@ -230,8 +280,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDatabaseStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/clientes/$id/editar': {
+      id: '/clientes/$id/editar'
+      path: '/editar'
+      fullPath: '/clientes/$id/editar'
+      preLoaderRoute: typeof ClientesIdEditarRouteImport
+      parentRoute: typeof ClientesIdRoute
+    }
   }
 }
+
+interface ClientesIdRouteChildren {
+  ClientesIdEditarRoute: typeof ClientesIdEditarRoute
+}
+
+const ClientesIdRouteChildren: ClientesIdRouteChildren = {
+  ClientesIdEditarRoute: ClientesIdEditarRoute,
+}
+
+const ClientesIdRouteWithChildren = ClientesIdRoute._addFileChildren(
+  ClientesIdRouteChildren,
+)
+
+interface ClientesRouteChildren {
+  ClientesIdRoute: typeof ClientesIdRouteWithChildren
+  ClientesNovoRoute: typeof ClientesNovoRoute
+}
+
+const ClientesRouteChildren: ClientesRouteChildren = {
+  ClientesIdRoute: ClientesIdRouteWithChildren,
+  ClientesNovoRoute: ClientesNovoRoute,
+}
+
+const ClientesRouteWithChildren = ClientesRoute._addFileChildren(
+  ClientesRouteChildren,
+)
 
 interface PropostasRouteChildren {
   PropostasIdRoute: typeof PropostasIdRoute
@@ -250,7 +333,7 @@ const PropostasRouteWithChildren = PropostasRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CadastrosRoute: CadastrosRoute,
-  ClientesRoute: ClientesRoute,
+  ClientesRoute: ClientesRouteWithChildren,
   ConfiguracoesRoute: ConfiguracoesRoute,
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
