@@ -175,6 +175,8 @@ function StatusBadge({ active }: { active?: boolean | null }) {
   return <Badge variant={active ? "default" : "secondary"}>{active ? "Ativo" : "Inativo"}</Badge>;
 }
 
+type CatalogForm<T extends FieldValues, TOutput extends FieldValues | undefined = undefined> = UseFormReturn<T, unknown, TOutput>;
+
 function SelectField({ value, onChange, placeholder, options }: { value?: string; onChange: (value: string) => void; placeholder: string; options: { value: string; label: string }[] }) {
   return (
     <Select value={value} onValueChange={onChange}>
@@ -248,7 +250,7 @@ function ModulesTab() {
 }
 
 function ModuleDialog({ open, row, onOpenChange, onSubmit }: { open: boolean; row: ModuleRow | null; onOpenChange: (v:boolean)=>void; onSubmit:(v: ModuleForm)=>Promise<void> }) {
-  const form = useForm<ModuleForm>({ resolver: zodResolver(moduleSchema), values: { marca: row?.marca ?? "", modelo: row?.modelo ?? "", potencia_w: row?.potencia_w ?? 550, tecnologia: row?.tecnologia ?? "Monocristalino", eficiencia_pct: row?.eficiencia_pct ?? 21, garantia_produto_anos: row?.garantia_produto_anos ?? 12, garantia_geracao_anos: row?.garantia_geracao_anos ?? 25, preco_custo: row?.preco_custo ?? 0, preco_venda: row?.preco_venda ?? 0, ativo: row?.ativo ?? true }});
+  const form = useForm<ModuleFormInput, unknown, ModuleForm>({ resolver: zodResolver(moduleSchema), values: { marca: row?.marca ?? "", modelo: row?.modelo ?? "", potencia_w: row?.potencia_w ?? 550, tecnologia: row?.tecnologia ?? "Monocristalino", eficiencia_pct: row?.eficiencia_pct ?? 21, garantia_produto_anos: row?.garantia_produto_anos ?? 12, garantia_geracao_anos: row?.garantia_geracao_anos ?? 25, preco_custo: row?.preco_custo ?? 0, preco_venda: row?.preco_venda ?? 0, ativo: row?.ativo ?? true }});
   return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl"><DialogHeader><DialogTitle>{row?"Editar":"Novo"} módulo</DialogTitle><DialogDescription>Dados técnicos e comerciais do painel.</DialogDescription></DialogHeader><Form {...form}><form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 md:grid-cols-2"><TextField form={form} name="marca" label="Marca"/><TextField form={form} name="modelo" label="Modelo"/><TextField form={form} name="potencia_w" label="Potência W" type="number"/><FormField control={form.control} name="tecnologia" render={({field})=><FormItem><FormLabel>Tecnologia</FormLabel><SelectField value={field.value} onChange={field.onChange} placeholder="Selecione" options={tecnologias.map(x=>({value:x,label:x}))}/><FormMessage/></FormItem>}/><TextField form={form} name="eficiencia_pct" label="Eficiência %" type="number"/><TextField form={form} name="garantia_produto_anos" label="Garantia produto" type="number"/><TextField form={form} name="garantia_geracao_anos" label="Garantia geração" type="number"/><MoneyInput control={form.control} name="preco_custo" label="Preço custo"/><MoneyInput control={form.control} name="preco_venda" label="Preço venda"/><BoolField form={form} name="ativo" label="Ativo"/><DialogFooter className="md:col-span-2"><Button type="submit">Salvar</Button></DialogFooter></form></Form></DialogContent></Dialog>;
 }
 
