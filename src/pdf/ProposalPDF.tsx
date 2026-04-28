@@ -1,4 +1,5 @@
 import { Document, Font, Image, LinearGradient, Page, Path, Rect, Stop, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
+import type React from "react";
 import { DataTable, Disclaimer, KpiBox, PDFFooter, PDFHeader, SectionTitle, pdfStyles } from "./components/PDFKit";
 import { templateNames, type ProposalPdfData } from "./types";
 
