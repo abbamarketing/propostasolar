@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useDeleteProposal, useDuplicateProposal, useProposal, useProposalEvents, useUpdateProposalStatus, type ProposalStatus } from "@/hooks/use-proposals";
 
 export const Route = createFileRoute("/propostas/$id")({
-  head: () => ({ meta: [{ title: "Detalhe da proposta — ENERGIZA SOLLAR" }, { name: "description", content: "Detalhe completo da proposta comercial." }] }),
+  head: () => ({ meta: [{ title: "Detalhe da proposta — ENERGIZA SOLAR" }, { name: "description", content: "Detalhe completo da proposta comercial." }] }),
   component: ProposalDetailPage,
 });
 

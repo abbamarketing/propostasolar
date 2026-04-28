@@ -21,9 +21,9 @@ type LoginForm = z.infer<typeof loginSchema>;
 export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
-      { title: "Login — ENERGIZA SOLLAR" },
-      { name: "description", content: "Acesse a área de propostas comerciais da Energiza Sollar." },
-      { property: "og:title", content: "Login — ENERGIZA SOLLAR" },
+      { title: "Login — ENERGIZA SOLAR" },
+      { name: "description", content: "Acesse a área de propostas comerciais da Energiza Solar." },
+      { property: "og:title", content: "Login — ENERGIZA SOLAR" },
       { property: "og:description", content: "Entrada para vendedores criarem propostas solares profissionais." },
     ],
   }),
@@ -63,7 +63,7 @@ function LoginPage() {
             Venda energia solar com propostas claras e profissionais.
           </h1>
           <p className="mt-5 text-lg text-sidebar-foreground/72">
-            Fluxo guiado para vendedores da ENERGIZA SOLLAR LTDA em Montes Claros/MG.
+            Fluxo guiado para vendedores da ENERGIZA SOLAR LTDA em Montes Claros/MG.
           </p>
         </div>
         <p className="relative text-sm text-sidebar-foreground/62">CNPJ 66.050.090/0001-33 • (38) 9895-9015</p>

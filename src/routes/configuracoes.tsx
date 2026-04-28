@@ -18,7 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 const api = supabase as any;
 
 export const Route = createFileRoute("/configuracoes")({
-  head: () => ({ meta: [{ title: "Configurações — ENERGIZA SOLLAR" }, { name: "description", content: "Dados da empresa, usuários e perfil." }] }),
+  head: () => ({ meta: [{ title: "Configurações — ENERGIZA SOLAR" }, { name: "description", content: "Dados da empresa, usuários e perfil." }] }),
   component: SettingsPage,
 });
 
