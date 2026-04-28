@@ -3,6 +3,7 @@ import { Outlet, Link, createRootRouteWithContext, HeadContent, Scripts } from "
 import { Toaster } from "sonner";
 
 import { AuthProvider } from "@/hooks/use-auth";
+import { CommandPalette } from "@/components/command-palette";
 import appCss from "../styles.css?url";
 
 function NotFoundComponent() {
@@ -45,6 +46,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
+      {
+        rel: "icon",
+        href: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='13' fill='%2316A34A'/%3E%3Cg stroke='%2316A34A' stroke-width='5' stroke-linecap='round'%3E%3Cpath d='M32 4v10M32 50v10M4 32h10M50 32h10M12 12l7 7M45 45l7 7M52 12l-7 7M19 45l-7 7'/%3E%3C/g%3E%3C/svg%3E",
+      },
     ],
   }),
   shellComponent: RootShell,
@@ -73,6 +78,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <Outlet />
+        <CommandPalette />
         <Toaster richColors position="top-right" />
       </AuthProvider>
     </QueryClientProvider>
