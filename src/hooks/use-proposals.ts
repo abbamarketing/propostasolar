@@ -61,7 +61,7 @@ function changePct(current: number, previous: number) {
 async function fetchPeriodRows(range: DateRange) {
   const { data, error } = await api
     .from("proposals")
-    .select("id,status,valor_total,created_at,updated_at,valido_ate,vendedor_id")
+    .select("*")
     .is("deleted_at", null)
     .gte("created_at", isoStart(range.from))
     .lte("created_at", isoEnd(range.to));
@@ -69,19 +69,34 @@ async function fetchPeriodRows(range: DateRange) {
   return (data ?? []) as Proposal[];
 }
 
+async function hydrateList(rows: Proposal[]): Promise<ProposalListRow[]> {
+  const clientIds = [...new Set(rows.map((p) => p.client_id).filter(Boolean))];
+  const sellerIds = [...new Set(rows.map((p) => p.vendedor_id).filter(Boolean))];
+  const [clientsRes, sellersRes] = await Promise.all([
+    clientIds.length ? api.from("clients").select("nome,cpf_cnpj,email,telefone,endereco_cidade,endereco_uf,id").in("id", clientIds) : Promise.resolve({ data: [], error: null }),
+    sellerIds.length ? api.from("user_profiles").select("id,nome,avatar_url,email").in("id", sellerIds) : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (clientsRes.error) throw clientsRes.error;
+  if (sellersRes.error) throw sellersRes.error;
+  const clients = new Map((clientsRes.data ?? []).map((c: any) => [c.id, c]));
+  const sellers = new Map((sellersRes.data ?? []).map((u: any) => [u.id, u]));
+  return rows.map((p) => ({ ...p, clients: clients.get(p.client_id) ?? null, user_profiles: p.vendedor_id ? sellers.get(p.vendedor_id) ?? null : null })) as ProposalListRow[];
+}
+
 export function useDashboardMetrics(range: DateRange) {
   return useQuery({
     queryKey: ["dashboard-metrics", range.from.toISOString(), range.to.toISOString()],
     queryFn: async () => {
       const prev = previousRange(range);
-      const [currentRows, previousRows, latestRes, sellersRes] = await Promise.all([
+      const [currentRows, previousRows, latestRaw, sellersRes] = await Promise.all([
         fetchPeriodRows(range),
         fetchPeriodRows(prev),
-        api.from("proposals").select("*,clients(nome,cpf_cnpj,endereco_cidade,endereco_uf),user_profiles(nome,avatar_url,email)").is("deleted_at", null).order("updated_at", { ascending: false }).limit(10),
+        api.from("proposals").select("*").is("deleted_at", null).order("updated_at", { ascending: false }).limit(10),
         api.from("user_profiles").select("id,nome,email,avatar_url"),
       ]);
-      if (latestRes.error) throw latestRes.error;
+      if (latestRaw.error) throw latestRaw.error;
       if (sellersRes.error) throw sellersRes.error;
+      const latest = await hydrateList((latestRaw.data ?? []) as Proposal[]);
       const issued = currentRows.filter((p) => p.status !== "rascunho");
       const prevIssued = previousRows.filter((p) => p.status !== "rascunho");
       const accepted = issued.filter((p) => p.status === "aceita");
@@ -108,23 +123,8 @@ export function useDashboardMetrics(range: DateRange) {
         return { mes: key, emitido: sum(rows), aceito: sum(rows.filter((p) => p.status === "aceita")) };
       });
       const sellers = (sellersRes.data ?? []) as Pick<Profile, "id" | "nome" | "avatar_url" | "email">[];
-      const topSellers = sellers
-        .map((seller) => ({ ...seller, valor: sum(accepted.filter((p) => p.vendedor_id === seller.id)) }))
-        .filter((s) => s.valor > 0)
-        .sort((a, b) => b.valor - a.valor)
-        .slice(0, 5);
-      return {
-        kpis: {
-          issued: { value: issued.length, change: changePct(issued.length, prevIssued.length) },
-          total: { value: sum(issued), change: changePct(sum(issued), sum(prevIssued)) },
-          conversion: { value: issued.length ? accepted.length / issued.length : 0, accepted: accepted.length, total: issued.length },
-          averageTicket: { value: avg(accepted), change: changePct(avg(accepted), avg(prevAccepted)) },
-        },
-        byStatus,
-        monthly,
-        topSellers,
-        latest: (latestRes.data ?? []) as ProposalListRow[],
-      };
+      const topSellers = sellers.map((seller) => ({ ...seller, valor: sum(accepted.filter((p) => p.vendedor_id === seller.id)) })).filter((s) => s.valor > 0).sort((a, b) => b.valor - a.valor).slice(0, 5);
+      return { kpis: { issued: { value: issued.length, change: changePct(issued.length, prevIssued.length) }, total: { value: sum(issued), change: changePct(sum(issued), sum(prevIssued)) }, conversion: { value: issued.length ? accepted.length / issued.length : 0, accepted: accepted.length, total: issued.length }, averageTicket: { value: avg(accepted), change: changePct(avg(accepted), avg(prevAccepted)) } }, byStatus, monthly, topSellers, latest };
     },
   });
 }
@@ -133,7 +133,7 @@ export function useProposalsList({ filters, page, pageSize, sort }: { filters: P
   return useQuery({
     queryKey: ["proposals-list", filters, page, pageSize, sort],
     queryFn: async () => {
-      let query = api.from("proposals").select("*,clients(nome,cpf_cnpj,email,telefone,endereco_cidade,endereco_uf),user_profiles(nome,avatar_url,email)", { count: "exact" }).is("deleted_at", null);
+      let query = api.from("proposals").select("*", { count: "exact" }).is("deleted_at", null);
       if (filters.statuses?.length) query = query.in("status", filters.statuses);
       if (filters.from) query = query.gte("created_at", isoStart(filters.from));
       if (filters.to) query = query.lte("created_at", isoEnd(filters.to));
@@ -141,14 +141,16 @@ export function useProposalsList({ filters, page, pageSize, sort }: { filters: P
       if (filters.minValue != null) query = query.gte("valor_total", filters.minValue);
       if (filters.maxValue != null) query = query.lte("valor_total", filters.maxValue);
       if (filters.city) query = query.ilike("cidade_projeto", `%${filters.city}%`);
-      if (filters.search?.trim()) {
-        const term = `%${filters.search.trim()}%`;
-        query = query.or(`numero.ilike.${term},clients.nome.ilike.${term},clients.cpf_cnpj.ilike.${term}`);
-      }
+      if (filters.search?.trim()) query = query.ilike("numero", `%${filters.search.trim()}%`);
       const from = (page - 1) * pageSize;
       const { data, error, count } = await query.order(sort.column, { ascending: sort.direction === "asc" }).range(from, from + pageSize - 1);
       if (error) throw error;
-      return { rows: (data ?? []) as ProposalListRow[], count: count ?? 0 };
+      let rows = await hydrateList((data ?? []) as Proposal[]);
+      if (filters.search?.trim()) {
+        const term = filters.search.trim().toLowerCase();
+        rows = rows.filter((p) => (p.numero ?? "").toLowerCase().includes(term) || (p.clients?.nome ?? "").toLowerCase().includes(term) || (p.clients?.cpf_cnpj ?? "").toLowerCase().includes(term));
+      }
+      return { rows, count: filters.search?.trim() ? rows.length : count ?? 0 };
     },
   });
 }
@@ -158,18 +160,21 @@ export function useProposal(id?: string) {
     queryKey: ["proposal-detail", id],
     enabled: Boolean(id),
     queryFn: async () => {
-      const { data, error } = await api
-        .from("proposals")
-        .select("*,clients(*),companies(*),user_profiles(*),proposal_financing_options(*),proposal_photos(*),proposal_items(*)")
-        .eq("id", id)
-        .is("deleted_at", null)
-        .single();
+      const { data: proposal, error } = await api.from("proposals").select("*").eq("id", id).is("deleted_at", null).single();
       if (error) throw error;
-      return data as ProposalDetail;
+      const [client, company, seller, financing, photos, items] = await Promise.all([
+        api.from("clients").select("*").eq("id", proposal.client_id).maybeSingle(),
+        api.from("companies").select("*").eq("id", proposal.company_id).maybeSingle(),
+        proposal.vendedor_id ? api.from("user_profiles").select("*").eq("id", proposal.vendedor_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
+        api.from("proposal_financing_options").select("*").eq("proposal_id", proposal.id),
+        api.from("proposal_photos").select("*").eq("proposal_id", proposal.id).order("ordem"),
+        api.from("proposal_items").select("*").eq("proposal_id", proposal.id).order("ordem"),
+      ]);
+      for (const result of [client, company, seller, financing, photos, items]) if (result.error) throw result.error;
+      return { ...proposal, clients: client.data, companies: company.data, user_profiles: seller.data, proposal_financing_options: financing.data ?? [], proposal_photos: photos.data ?? [], proposal_items: items.data ?? [] } as ProposalDetail;
     },
   });
 }
-
 export function useProposalEvents(id?: string) {
   return useQuery({
     queryKey: ["proposal-events", id],
