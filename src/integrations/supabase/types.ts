@@ -536,6 +536,39 @@ export type Database = {
           },
         ]
       }
+      proposal_status_events: {
+        Row: {
+          changed_by: string | null
+          company_id: string
+          created_at: string
+          from_status: string | null
+          id: string
+          motivo: string | null
+          proposal_id: string
+          to_status: string
+        }
+        Insert: {
+          changed_by?: string | null
+          company_id: string
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          motivo?: string | null
+          proposal_id: string
+          to_status: string
+        }
+        Update: {
+          changed_by?: string | null
+          company_id?: string
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          motivo?: string | null
+          proposal_id?: string
+          to_status?: string
+        }
+        Relationships: []
+      }
       proposals: {
         Row: {
           aceita_em: string | null
@@ -554,6 +587,7 @@ export type Database = {
           custo_outros: number | null
           custo_projeto_art: number | null
           custo_total: number | null
+          deleted_at: string | null
           economia_anual: number | null
           economia_mensal: number | null
           energia_compensar_kwh: number | null
@@ -616,6 +650,7 @@ export type Database = {
           custo_outros?: number | null
           custo_projeto_art?: number | null
           custo_total?: number | null
+          deleted_at?: string | null
           economia_anual?: number | null
           economia_mensal?: number | null
           energia_compensar_kwh?: number | null
@@ -678,6 +713,7 @@ export type Database = {
           custo_outros?: number | null
           custo_projeto_art?: number | null
           custo_total?: number | null
+          deleted_at?: string | null
           economia_anual?: number | null
           economia_mensal?: number | null
           energia_compensar_kwh?: number | null
@@ -906,7 +942,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      mark_expired_proposals: { Args: never; Returns: number }
     }
     Enums: {
       app_role: "admin" | "vendedor" | "gestor"
