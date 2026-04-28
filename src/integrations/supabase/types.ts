@@ -878,7 +878,7 @@ export type Database = {
           company_id?: string | null
           created_at?: string
           email: string
-          id: string
+          id?: string
           nome: string
           telefone?: string | null
           updated_at?: string
