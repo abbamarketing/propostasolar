@@ -74,9 +74,9 @@ export const Route = createFileRoute("/cadastros")({
   validateSearch: zodValidator(searchSchema),
   head: () => ({
     meta: [
-      { title: "Cadastros — ENERGIZA SOLLAR" },
+      { title: "Cadastros — ENERGIZA SOLAR" },
       { name: "description", content: "Cadastros administrativos de equipamentos, HSP e tarifas." },
-      { property: "og:title", content: "Cadastros — ENERGIZA SOLLAR" },
+      { property: "og:title", content: "Cadastros — ENERGIZA SOLAR" },
       { property: "og:description", content: "Mantenha o catálogo base para propostas solares." },
     ],
   }),

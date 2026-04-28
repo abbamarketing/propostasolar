@@ -30,6 +30,7 @@ export type ProposalSort = { column: "numero" | "valor_total" | "created_at" | "
 
 const api = supabase as any;
 const nonDraftStatuses: ProposalStatus[] = ["enviada", "negociacao", "aceita", "recusada", "expirada"];
+export const proposalSortableColumns = ["numero", "valor_total", "created_at", "updated_at", "valido_ate"] as const;
 
 function isoStart(date: Date) {
   const d = new Date(date);
@@ -230,6 +231,28 @@ export function useUpdateProposalStatus(id?: string) {
       queryClient.invalidateQueries({ queryKey: ["proposal-detail", id] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-metrics"] });
     },
+  });
+}
+
+export function useBulkUpdateProposalStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ ids, status }: { ids: string[]; status: ProposalStatus }) => {
+      if (!ids.length) return 0;
+      const payload: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
+      if (status === "enviada") payload.enviada_em = new Date().toISOString();
+      if (status === "aceita") payload.aceita_em = new Date().toISOString();
+      if (status === "recusada") payload.recusada_em = new Date().toISOString();
+      const { error } = await api.from("proposals").update(payload).in("id", ids);
+      if (error) throw error;
+      return ids.length;
+    },
+    onSuccess: (count) => {
+      queryClient.invalidateQueries({ queryKey: ["proposals-list"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-metrics"] });
+      toast.success(`${count} proposta${count === 1 ? "" : "s"} atualizada${count === 1 ? "" : "s"}.`);
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : "Não foi possível atualizar as propostas."),
   });
 }
 

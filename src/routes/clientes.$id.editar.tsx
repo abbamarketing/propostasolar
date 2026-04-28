@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useClient, useUpdateClient, useUploadClientDocument } from "@/hooks/use-clients";
 
 export const Route = createFileRoute("/clientes/$id/editar")({
-  head: () => ({ meta: [{ title: "Editar cliente — ENERGIZA SOLLAR" }, { name: "description", content: "Edição de dados do cliente." }] }),
+  head: () => ({ meta: [{ title: "Editar cliente — ENERGIZA SOLAR" }, { name: "description", content: "Edição de dados do cliente." }] }),
   component: EditClientPage,
 });
 

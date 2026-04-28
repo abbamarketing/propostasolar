@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/page-header";
 import { useCreateClient, useUploadClientDocument } from "@/hooks/use-clients";
 
 export const Route = createFileRoute("/clientes/novo")({
-  head: () => ({ meta: [{ title: "Novo cliente — ENERGIZA SOLLAR" }, { name: "description", content: "Cadastro de cliente." }] }),
+  head: () => ({ meta: [{ title: "Novo cliente — ENERGIZA SOLAR" }, { name: "description", content: "Cadastro de cliente." }] }),
   component: NewClientPage,
 });
 

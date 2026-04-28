@@ -18,7 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useClient, useClientDocuments, useSoftDeleteClient, useUploadClientDocument, type DocumentCategory } from "@/hooks/use-clients";
 
 export const Route = createFileRoute("/clientes/$id")({
-  head: () => ({ meta: [{ title: "Detalhe do cliente — ENERGIZA SOLLAR" }, { name: "description", content: "Dados, propostas e documentos do cliente." }] }),
+  head: () => ({ meta: [{ title: "Detalhe do cliente — ENERGIZA SOLAR" }, { name: "description", content: "Dados, propostas e documentos do cliente." }] }),
   component: ClientDetailPage,
 });
 

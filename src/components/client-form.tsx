@@ -23,9 +23,13 @@ const optionalEmail = z.preprocess(
   z.string().email("Informe um e-mail válido.").nullable().optional(),
 ) as z.ZodType<string | null | undefined>;
 const optionalNumber = z.preprocess(
-  (value) => value === "" || value === null || value === undefined ? null : Number(value),
+  (value) => value === "" || value === null || value === undefined || Number.isNaN(value) ? null : Number(value),
   z.number().min(0, "Informe um valor maior ou igual a zero.").nullable().optional(),
 ) as z.ZodType<number | null | undefined>;
+const positiveMoney = z.preprocess(
+  (value) => value === "" || value === null || value === undefined || Number.isNaN(value) ? 0 : Number(value),
+  z.number().positive("Informe um valor maior que zero."),
+) as z.ZodType<number>;
 
 export const clientFormSchema = z.object({
   tipo: z.enum(["PF", "PJ"], { required_error: "Selecione o tipo de cliente." }),
@@ -47,7 +51,7 @@ export const clientFormSchema = z.object({
   numero_instalacao: z.string().trim().optional().nullable(),
   tipo_ligacao: z.enum(["monofasica", "bifasica", "trifasica"], { required_error: "Selecione o tipo de ligação." }),
   tipo_telhado: z.string().min(1, "Selecione o tipo de telhado."),
-  conta_luz_media: z.number().positive("Informe um valor maior que zero."),
+  conta_luz_media: positiveMoney,
   consumo_medio_kwh: optionalNumber,
   conta_luz_url: z.string().optional().nullable(),
   observacoes: z.string().max(2000, "Use no máximo 2000 caracteres.").optional().nullable(),

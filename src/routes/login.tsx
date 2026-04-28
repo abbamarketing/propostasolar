@@ -84,7 +84,7 @@ function LoginPage() {
                 <Label htmlFor="email">E-mail</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input id="email" type="email" placeholder="vendedor@energizasollar.com" className="h-11 pl-10" {...form.register("email")} />
+                  <Input id="email" type="email" placeholder="vendedor@energizasolar.com" className="h-11 pl-10" {...form.register("email")} />
                 </div>
                 {form.formState.errors.email ? <p className="text-sm text-destructive">{form.formState.errors.email.message}</p> : null}
               </div>
