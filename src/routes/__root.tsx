@@ -33,10 +33,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "ENERGIZA SOLLAR — Propostas Solares" },
+      { title: "ENERGIZA SOLAR — Propostas Solares" },
       { name: "description", content: "SaaS para gerar propostas comerciais de energia solar em PDF." },
-      { name: "author", content: "ENERGIZA SOLLAR LTDA" },
-      { property: "og:title", content: "ENERGIZA SOLLAR — Propostas Solares" },
+      { name: "author", content: "ENERGIZA SOLAR LTDA" },
+      { property: "og:title", content: "ENERGIZA SOLAR — Propostas Solares" },
       { property: "og:description", content: "Fluxo guiado para vendedores dimensionarem sistemas solares e emitirem propostas." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

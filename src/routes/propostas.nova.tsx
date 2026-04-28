@@ -9,9 +9,9 @@ export const Route = createFileRoute("/propostas/nova")({
   validateSearch: zodValidator(searchSchema),
   head: () => ({
     meta: [
-      { title: "Nova proposta — ENERGIZA SOLLAR" },
+      { title: "Nova proposta — ENERGIZA SOLAR" },
       { name: "description", content: "Wizard de criação de proposta solar." },
-      { property: "og:title", content: "Nova proposta — ENERGIZA SOLLAR" },
+      { property: "og:title", content: "Nova proposta — ENERGIZA SOLAR" },
       { property: "og:description", content: "Wizard de criação de proposta solar." },
     ],
   }),

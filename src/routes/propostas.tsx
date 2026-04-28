@@ -25,7 +25,7 @@ const statuses = Object.keys(statusLabels) as ProposalStatus[];
 
 export const Route = createFileRoute("/propostas")({
   validateSearch: zodValidator(searchSchema),
-  head: () => ({ meta: [{ title: "Propostas — ENERGIZA SOLLAR" }, { name: "description", content: "Listagem de propostas com filtros, busca e ações em lote." }] }),
+  head: () => ({ meta: [{ title: "Propostas — ENERGIZA SOLAR" }, { name: "description", content: "Listagem de propostas com filtros, busca e ações em lote." }] }),
   component: ProposalsPage,
 });
 
