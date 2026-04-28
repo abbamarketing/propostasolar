@@ -6,6 +6,9 @@ import type { Database } from "@/integrations/supabase/types";
 
 type ProposalRow = Database["public"]["Tables"]["proposals"]["Row"];
 type ProposalUpdate = Database["public"]["Tables"]["proposals"]["Update"];
+type ProposalItemInsert = Database["public"]["Tables"]["proposal_items"]["Insert"];
+type FinancingRow = Database["public"]["Tables"]["proposal_financing_options"]["Row"];
+type FinancingInsert = Database["public"]["Tables"]["proposal_financing_options"]["Insert"];
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
@@ -33,6 +36,22 @@ export type ProposalDraft = {
   inversor_modelo: string | null;
   inversor_potencia_kw: number | null;
   qtd_inversores: number | null;
+  custo_modulos: number | null;
+  custo_inversor: number | null;
+  custo_estrutura: number | null;
+  custo_cabos_protecoes: number | null;
+  custo_projeto_art: number | null;
+  custo_mao_obra: number | null;
+  custo_outros: number | null;
+  custo_total: number | null;
+  margem_pct: number | null;
+  valor_total: number | null;
+  valor_a_vista: number | null;
+  economia_mensal: number | null;
+  economia_anual: number | null;
+  payback_anos: number | null;
+  payback_descontado_anos: number | null;
+  co2_evitado_kg_ano: number | null;
 };
 
 export const emptyDraft: ProposalDraft = {
@@ -59,6 +78,22 @@ export const emptyDraft: ProposalDraft = {
   inversor_modelo: null,
   inversor_potencia_kw: null,
   qtd_inversores: 1,
+  custo_modulos: null,
+  custo_inversor: null,
+  custo_estrutura: null,
+  custo_cabos_protecoes: null,
+  custo_projeto_art: null,
+  custo_mao_obra: null,
+  custo_outros: null,
+  custo_total: null,
+  margem_pct: 0.25,
+  valor_total: null,
+  valor_a_vista: null,
+  economia_mensal: null,
+  economia_anual: null,
+  payback_anos: null,
+  payback_descontado_anos: null,
+  co2_evitado_kg_ano: null,
 };
 
 async function getCompanyId() {
@@ -94,6 +129,22 @@ function toDraft(row?: ProposalRow | null, fallbackClientId = ""): ProposalDraft
     inversor_modelo: row.inversor_modelo,
     inversor_potencia_kw: row.inversor_potencia_kw,
     qtd_inversores: row.qtd_inversores ?? 1,
+    custo_modulos: row.custo_modulos,
+    custo_inversor: row.custo_inversor,
+    custo_estrutura: row.custo_estrutura,
+    custo_cabos_protecoes: row.custo_cabos_protecoes,
+    custo_projeto_art: row.custo_projeto_art,
+    custo_mao_obra: row.custo_mao_obra,
+    custo_outros: row.custo_outros,
+    custo_total: row.custo_total,
+    margem_pct: row.margem_pct ?? 0.25,
+    valor_total: row.valor_total,
+    valor_a_vista: row.valor_a_vista,
+    economia_mensal: row.economia_mensal,
+    economia_anual: row.economia_anual,
+    payback_anos: row.payback_anos,
+    payback_descontado_anos: row.payback_descontado_anos,
+    co2_evitado_kg_ano: row.co2_evitado_kg_ano,
   };
 }
 
@@ -110,6 +161,80 @@ export function useProposal(proposalId?: string) {
       if (error) throw error;
       return data;
     },
+  });
+}
+
+export function useProposalItems(proposalId?: string) {
+  return useQuery({
+    queryKey: ["proposal-items", proposalId],
+    enabled: Boolean(proposalId),
+    queryFn: async () => {
+      const { data, error } = await supabase.from("proposal_items").select("*").eq("proposal_id", proposalId ?? "").order("ordem");
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useUpsertProposalItems() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ proposalId, items }: { proposalId: string; items: Omit<ProposalItemInsert, "proposal_id">[] }) => {
+      const { error: deleteError } = await supabase.from("proposal_items").delete().eq("proposal_id", proposalId);
+      if (deleteError) throw deleteError;
+      if (items.length === 0) return;
+      const { error } = await supabase.from("proposal_items").insert(items.map((item) => ({ ...item, proposal_id: proposalId })));
+      if (error) throw error;
+    },
+    onSuccess: (_data, vars) => queryClient.invalidateQueries({ queryKey: ["proposal-items", vars.proposalId] }),
+  });
+}
+
+export function useProposalFinancing(proposalId?: string) {
+  return useQuery({
+    queryKey: ["proposal-financing", proposalId],
+    enabled: Boolean(proposalId),
+    queryFn: async () => {
+      const { data, error } = await supabase.from("proposal_financing_options").select("*").eq("proposal_id", proposalId ?? "").order("prazo_meses");
+      if (error) throw error;
+      return data as FinancingRow[];
+    },
+  });
+}
+
+export function useCreateFinancingOption() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: FinancingInsert) => {
+      const { data, error } = await supabase.from("proposal_financing_options").insert(payload).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => queryClient.invalidateQueries({ queryKey: ["proposal-financing", data.proposal_id] }),
+  });
+}
+
+export function useUpdateFinancingOption() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...payload }: Partial<FinancingInsert> & { id: string; proposal_id: string }) => {
+      const { data, error } = await supabase.from("proposal_financing_options").update(payload).eq("id", id).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => queryClient.invalidateQueries({ queryKey: ["proposal-financing", data.proposal_id] }),
+  });
+}
+
+export function useDeleteFinancingOption() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, proposalId }: { id: string; proposalId: string }) => {
+      const { error } = await supabase.from("proposal_financing_options").delete().eq("id", id);
+      if (error) throw error;
+      return proposalId;
+    },
+    onSuccess: (proposalId) => queryClient.invalidateQueries({ queryKey: ["proposal-financing", proposalId] }),
   });
 }
 
