@@ -1,5 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { Edit, Eye, FilePlus2, Search, Trash2, UserPlus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AppLayout } from "@/components/app-layout";
@@ -29,6 +28,7 @@ export const Route = createFileRoute("/clientes")({
 });
 
 function ClientsPage() {
+  const location = useLocation();
   const navigate = useNavigate({ from: "/clientes" });
   const [search, setSearch] = useState("");
   const [tipo, setTipo] = useState<"todos" | "PF" | "PJ">("todos");
@@ -47,6 +47,8 @@ function ClientsPage() {
     setPage(1);
     callback();
   }
+
+  if (location.pathname !== "/clientes") return <Outlet />;
 
   return (
     <AppLayout>
