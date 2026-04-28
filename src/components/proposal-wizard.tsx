@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useBlocker, useNavigate } from "@tanstack/react-router";
 import { Check, ChevronsUpDown, CircleAlert, CircleHelp, Clock, Loader2, Plus, RefreshCcw, Save, Search, UserRound } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { ClientForm, type ClientFormValues } from "@/components/client-form";
@@ -45,9 +45,12 @@ export function ProposalWizard({ proposalId, initialClientId }: ProposalWizardPr
     enableBeforeUnload: autosave.hasUnsavedChanges,
   });
 
-  function updateDraft(patch: Partial<ProposalDraft>) {
-    autosave.setDraft((current) => ({ ...current, ...patch }));
-  }
+  const updateDraft = useCallback((patch: Partial<ProposalDraft>) => {
+    autosave.setDraft((current) => {
+      const changed = Object.entries(patch).some(([key, value]) => current[key as keyof ProposalDraft] !== value);
+      return changed ? { ...current, ...patch } : current;
+    });
+  }, [autosave]);
 
   function canOpen(target: number) {
     if (target <= step) return true;
