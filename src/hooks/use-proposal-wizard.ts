@@ -270,6 +270,76 @@ export function useDeleteFinancingOption() {
   });
 }
 
+export function useProposalPhotos(proposalId?: string) {
+  return useQuery({
+    queryKey: ["proposal-photos", proposalId],
+    enabled: Boolean(proposalId),
+    queryFn: async () => {
+      const { data, error } = await supabase.from("proposal_photos").select("*").eq("proposal_id", proposalId ?? "").order("ordem");
+      if (error) throw error;
+      return data as ProposalPhotoRow[];
+    },
+  });
+}
+
+export function useProposalPhotoMutations(proposalId?: string) {
+  const queryClient = useQueryClient();
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["proposal-photos", proposalId] });
+  const upload = useMutation({
+    mutationFn: async (files: File[]) => {
+      if (!proposalId) throw new Error("Salve a proposta antes de anexar fotos.");
+      const accepted = files.slice(0, 6);
+      const rows: ProposalPhotoInsert[] = [];
+      for (const [index, file] of accepted.entries()) {
+        if (!file.type.match(/^image\/(jpeg|png|webp)$/)) throw new Error("Envie apenas JPG, PNG ou WebP.");
+        if (file.size > 5 * 1024 * 1024) throw new Error("Cada imagem deve ter até 5MB.");
+        const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+        const path = `proposals/${proposalId}/photos/${Date.now()}-${index}.${ext}`;
+        const { error: uploadError } = await supabase.storage.from("proposal-photos").upload(path, file, { upsert: false });
+        if (uploadError) throw uploadError;
+        const { data } = supabase.storage.from("proposal-photos").getPublicUrl(path);
+        rows.push({ proposal_id: proposalId, url: data.publicUrl, legenda: "", ordem: index });
+      }
+      const { data, error } = await supabase.from("proposal_photos").insert(rows).select();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: invalidate,
+  });
+  const update = useMutation({
+    mutationFn: async (photo: Pick<ProposalPhotoRow, "id" | "legenda" | "ordem">) => {
+      const { data, error } = await supabase.from("proposal_photos").update({ legenda: photo.legenda, ordem: photo.ordem }).eq("id", photo.id).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: invalidate,
+  });
+  const remove = useMutation({
+    mutationFn: async (photoId: string) => {
+      const { error } = await supabase.from("proposal_photos").delete().eq("id", photoId);
+      if (error) throw error;
+    },
+    onSuccess: invalidate,
+  });
+  return { upload, update, remove };
+}
+
+export function useProposalContext(proposal?: ProposalRow | null) {
+  return useQuery({
+    queryKey: ["proposal-context", proposal?.company_id, proposal?.vendedor_id],
+    enabled: Boolean(proposal?.company_id || proposal?.vendedor_id),
+    queryFn: async () => {
+      const [companyResult, sellerResult] = await Promise.all([
+        proposal?.company_id ? supabase.from("companies").select("nome_fantasia, razao_social, logo_url, email, telefone, whatsapp").eq("id", proposal.company_id).single() : Promise.resolve({ data: null, error: null }),
+        proposal?.vendedor_id ? supabase.from("user_profiles").select("nome, email, telefone, avatar_url, cargo").eq("id", proposal.vendedor_id).single() : Promise.resolve({ data: null, error: null }),
+      ]);
+      if (companyResult.error) throw companyResult.error;
+      if (sellerResult.error) throw sellerResult.error;
+      return { company: companyResult.data, seller: sellerResult.data };
+    },
+  });
+}
+
 export function useProposalAutosave({ proposalId, initialClientId }: { proposalId?: string; initialClientId?: string }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
