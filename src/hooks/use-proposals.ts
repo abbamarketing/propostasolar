@@ -9,7 +9,6 @@ type Profile = Database["public"]["Tables"]["user_profiles"]["Row"];
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 type Financing = Database["public"]["Tables"]["proposal_financing_options"]["Row"];
 type Photo = Database["public"]["Tables"]["proposal_photos"]["Row"];
-type SupabaseAny = typeof supabase & { from: (table: string) => any };
 
 export type ProposalStatus = "rascunho" | "enviada" | "negociacao" | "aceita" | "recusada" | "expirada";
 export type DateRange = { from: Date; to: Date };
@@ -29,7 +28,7 @@ export type ProposalFilters = {
 
 export type ProposalSort = { column: "numero" | "valor_total" | "created_at" | "updated_at" | "valido_ate"; direction: "asc" | "desc" };
 
-const api = supabase as SupabaseAny;
+const api = supabase as any;
 const nonDraftStatuses: ProposalStatus[] = ["enviada", "negociacao", "aceita", "recusada", "expirada"];
 export const proposalSortableColumns = ["numero", "valor_total", "created_at", "updated_at", "valido_ate"] as const;
 
