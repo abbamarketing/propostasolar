@@ -3,7 +3,10 @@ import type React from "react";
 import { DataTable, Disclaimer, KpiBox, PDFFooter, PDFHeader, SectionTitle, pdfStyles } from "./components/PDFKit";
 import { templateNames, type ProposalPdfData } from "./types";
 
-Font.register({ family: "Inter", src: "https://fonts.gstatic.com/s/inter/v13/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa1ZL7.ttf", fontWeight: 400 });
+Font.register({
+  family: "Inter",
+  fonts: [400, 500, 600, 700].map((fontWeight) => ({ src: "https://fonts.gstatic.com/s/inter/v13/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa1ZL7.ttf", fontWeight })),
+});
 
 const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 const monthKeys = ["hsp_jan", "hsp_fev", "hsp_mar", "hsp_abr", "hsp_mai", "hsp_jun", "hsp_jul", "hsp_ago", "hsp_set", "hsp_out", "hsp_nov", "hsp_dez"];
@@ -11,7 +14,7 @@ const monthKeys = ["hsp_jan", "hsp_fev", "hsp_mar", "hsp_abr", "hsp_mai", "hsp_j
 export function ProposalPDF({ data }: { data: ProposalPdfData }) {
   const { proposal, client, company, seller, financing, photos, cityIrradiance } = data;
   const totalPages = 8 + (photos.length ? Math.ceil(photos.length / 4) : 0) + (proposal.observacoes_comerciais ? 1 : 0);
-  let page = 1;
+  let page = 2;
   const internal = (children: React.ReactNode) => <Page size="A4" style={styles.page}><PDFHeader companyData={company} />{children}<PDFFooter pageNumber={page++} totalPages={totalPages} companyData={company} /></Page>;
   const economia25 = calcEconomia25(proposal.economia_anual || 0);
   const monthly = monthKeys.map((key) => ((cityIrradiance?.[key] || cityIrradiance?.hsp_medio || proposal.hsp_usado || 5) * (proposal.kwp_instalado || 0) * 30 * (proposal.performance_ratio || 0.8)));
