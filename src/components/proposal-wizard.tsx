@@ -266,6 +266,64 @@ function buildProposalItems({ draft, client, module, inverter, qtdModulos, qtdIn
   return [...base, ...otherCosts.map((item, index) => ({ ordem: 7 + index, categoria: "outros", descricao: item.descricao || "Outros custos", quantidade: 1, unidade: "un", valor_unitario: item.valor, valor_total: item.valor }))];
 }
 
+const proposalTemplates = [
+  { value: "on-grid-residencial", title: "On-Grid Residencial", description: "Para sistemas conectados à rede em residências", icon: Home },
+  { value: "on-grid-comercial", title: "On-Grid Comercial", description: "Para empresas, lojas, escritórios", icon: Building2 },
+  { value: "off-grid", title: "Off-Grid (isolado)", description: "Sistemas com baterias, sem rede", icon: BatteryCharging },
+  { value: "rural", title: "Rural / Agronegócio", description: "Propriedades rurais, irrigação", icon: Tractor },
+  { value: "comercial-gp", title: "Comercial Grande Porte", description: "Acima de 75 kWp", icon: Warehouse },
+];
+
+function PersonalizationStep({ proposalId, proposal, draft, client, updateDraft }: { proposalId?: string; proposal: { numero: string | null; company_id: string; vendedor_id: string | null } | null; draft: ProposalDraft; client: ClientRow | null; updateDraft: (patch: Partial<ProposalDraft>) => void }) {
+  const modules = useModules({ search: "", ativo: true });
+  const inverters = useInverters({ search: "", ativo: true });
+  const photos = useProposalPhotos(proposalId);
+  const photoMutations = useProposalPhotoMutations(proposalId);
+  const context = useProposalContext(proposal);
+  const financing = useProposalFinancing(proposalId);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const selectedTemplate = proposalTemplates.find((item) => item.value === (draft.template ?? "on-grid-residencial")) ?? proposalTemplates[0];
+  const selectedModule = modules.data?.find((item) => item.id === draft.modulo_id);
+  const selectedInverter = inverters.data?.find((item) => item.id === draft.inversor_id);
+  const validade = draft.validade_dias ?? 15;
+  const validUntil = useMemo(() => addDays(validade), [validade]);
+  const commercialNotes = draft.observacoes_comerciais ?? "";
+
+  useEffect(() => {
+    if (!draft.template) updateDraft({ template: "on-grid-residencial" });
+  }, [draft.template, updateDraft]);
+
+  useEffect(() => {
+    if (draft.valido_ate !== validUntil.iso) updateDraft({ valido_ate: validUntil.iso });
+  }, [draft.valido_ate, updateDraft, validUntil.iso]);
+
+  useEffect(() => {
+    if (!draft.personalizar_garantias) {
+      updateDraft({ garantia_modulo_anos: selectedModule?.garantia_geracao_anos ?? 25, garantia_inversor_anos: selectedInverter?.garantia_anos ?? 10, garantia_instalacao_anos: 1, prazo_execucao_dias_uteis: 30, prazo_homologacao_dias: 90 });
+    }
+  }, [draft.personalizar_garantias, selectedInverter?.garantia_anos, selectedModule?.garantia_geracao_anos, updateDraft]);
+
+  function onFiles(files: FileList | null) {
+    if (!files || !proposalId) return;
+    const current = photos.data?.length ?? 0;
+    photoMutations.upload.mutate(Array.from(files).slice(0, Math.max(0, 6 - current)));
+  }
+
+  function reorder(dropId: string) {
+    if (!dragId || dragId === dropId || !photos.data) return;
+    const rows = [...photos.data];
+    const from = rows.findIndex((item) => item.id === dragId);
+    const to = rows.findIndex((item) => item.id === dropId);
+    if (from < 0 || to < 0) return;
+    const [moved] = rows.splice(from, 1);
+    rows.splice(to, 0, moved);
+    rows.forEach((photo, ordem) => photoMutations.update.mutate({ id: photo.id, legenda: photo.legenda, ordem }));
+    setDragId(null);
+  }
+
+  return <div className="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(320px,2fr)]"><div className="space-y-4"><Card className="shadow-soft"><CardHeader><CardTitle>Template da proposta</CardTitle></CardHeader><CardContent><RadioGroup value={draft.template ?? "on-grid-residencial"} onValueChange={(template) => updateDraft({ template })} className="grid gap-3 md:grid-cols-2">{proposalTemplates.map((template) => <TemplateCard key={template.value} template={template} selected={template.value === (draft.template ?? "on-grid-residencial")} />)}</RadioGroup></CardContent></Card><Card className="shadow-soft"><CardHeader><CardTitle>Fotos de projetos similares</CardTitle></CardHeader><CardContent className="space-y-4"><label className={cn("flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed p-6 text-center transition-colors", !proposalId && "cursor-not-allowed opacity-60")}><Upload className="mb-2 h-8 w-8 text-muted-foreground" /><span className="font-semibold">Arraste imagens ou clique para enviar</span><span className="text-sm text-muted-foreground">JPG, PNG ou WebP · até 6 fotos · 5MB cada</span><input className="sr-only" type="file" multiple accept="image/jpeg,image/png,image/webp" disabled={!proposalId || (photos.data?.length ?? 0) >= 6} onChange={(event) => onFiles(event.target.files)} /></label><Button type="button" variant="outline" disabled>{/* TODO: selecionar fotos da biblioteca da empresa */}<ImageIcon className="h-4 w-4" />Selecionar da biblioteca</Button><div className="grid gap-3 md:grid-cols-2">{photos.data?.map((photo) => <div key={photo.id} draggable onDragStart={() => setDragId(photo.id)} onDragOver={(event) => event.preventDefault()} onDrop={() => reorder(photo.id)} className="rounded-lg border bg-card p-2"><div className="relative aspect-video overflow-hidden rounded-md bg-muted"><img src={photo.url} alt={photo.legenda || "Foto de projeto similar"} className="h-full w-full object-cover" /><GripVertical className="absolute left-2 top-2 h-5 w-5 rounded bg-background/80 p-0.5" /></div><div className="mt-2 flex gap-2"><Input maxLength={100} placeholder="Legenda da foto" value={photo.legenda ?? ""} onChange={(event) => photoMutations.update.mutate({ id: photo.id, ordem: photo.ordem ?? 0, legenda: event.target.value.slice(0, 100) })} /><Button type="button" variant="ghost" size="icon" onClick={() => photoMutations.remove.mutate(photo.id)}><Trash2 className="h-4 w-4" /></Button></div></div>)}</div></CardContent></Card><Card className="shadow-soft"><CardHeader><CardTitle>Observações comerciais</CardTitle></CardHeader><CardContent className="space-y-2"><Textarea rows={8} maxLength={2000} value={commercialNotes} placeholder="Ex: Prazo de entrega de 45 dias após assinatura. Condições especiais para pagamento à vista..." onChange={(event) => updateDraft({ observacoes_comerciais: event.target.value.slice(0, 2000) })} /><p className="text-right text-xs text-muted-foreground">{commercialNotes.length}/2000 caracteres</p></CardContent></Card><CardBlock title="Validade e detalhes"><NumberField label="Validade da proposta (dias)" value={validade} hint={`Válida até ${validUntil.label}`} onChange={(value) => updateDraft({ validade_dias: Math.max(1, Math.round(value)) })} /><Info label="Número da proposta" value={proposal?.numero ?? "Gerando..."} /><SellerCard seller={context.data?.seller ?? null} /></CardBlock><Collapsible defaultOpen={false}><Card className="shadow-soft"><CardHeader><CollapsibleTrigger asChild><button type="button" className="flex w-full items-center justify-between text-left"><CardTitle>Garantias e prazos</CardTitle><Switch checked={draft.personalizar_garantias} onCheckedChange={(checked) => updateDraft({ personalizar_garantias: checked })} /></button></CollapsibleTrigger></CardHeader><CollapsibleContent><CardContent className="grid gap-4 md:grid-cols-2">{draft.personalizar_garantias ? <><NumberField label="Garantia do módulo (anos)" value={draft.garantia_modulo_anos ?? selectedModule?.garantia_geracao_anos ?? 25} onChange={(value) => updateDraft({ garantia_modulo_anos: Math.round(value) })} /><NumberField label="Garantia do inversor (anos)" value={draft.garantia_inversor_anos ?? selectedInverter?.garantia_anos ?? 10} onChange={(value) => updateDraft({ garantia_inversor_anos: Math.round(value) })} /><NumberField label="Garantia da instalação (anos)" value={draft.garantia_instalacao_anos ?? 1} onChange={(value) => updateDraft({ garantia_instalacao_anos: Math.round(value) })} /><NumberField label="Prazo de execução (dias úteis)" value={draft.prazo_execucao_dias_uteis ?? 30} onChange={(value) => updateDraft({ prazo_execucao_dias_uteis: Math.round(value) })} /><NumberField label="Prazo de homologação (dias)" value={draft.prazo_homologacao_dias ?? 90} onChange={(value) => updateDraft({ prazo_homologacao_dias: Math.round(value) })} /></> : <div className="md:col-span-2 grid gap-3 md:grid-cols-3"><Info label="Módulo" value={`${draft.garantia_modulo_anos ?? selectedModule?.garantia_geracao_anos ?? 25} anos`} /><Info label="Inversor" value={`${draft.garantia_inversor_anos ?? selectedInverter?.garantia_anos ?? 10} anos`} /><Info label="Instalação" value="1 ano" /><Info label="Execução" value="30 dias úteis" /><Info label="Homologação" value="90 dias" /></div>}</CardContent></CollapsibleContent></Card></Collapsible></div><ProposalCoverPreview template={selectedTemplate} draft={draft} proposal={proposal} client={client} company={context.data?.company ?? null} photosCount={photos.data?.length ?? 0} financingCount={financing.data?.filter((item) => item.incluir_proposta).length ?? 0} /></div>;
+}
+
 function FinancialSummary({ pricing, financial, financing, proposalId, onInsertDefaults, onAdd, onToggle, onDelete }: { pricing: ReturnType<typeof calculatePricing>; financial: ReturnType<typeof calculateFinancialAnalysis>; financing: { id: string; proposal_id: string; banco: string | null; prazo_meses: number | null; valor_parcela: number | null; incluir_proposta: boolean }[]; proposalId?: string; onInsertDefaults: () => void; onAdd: () => void; onToggle: (row: { id: string; proposal_id: string }, checked: boolean) => void; onDelete: (row: { id: string; proposal_id: string }) => void }) { return <aside className="xl:sticky xl:top-40 xl:self-start"><Card className="shadow-soft"><CardHeader><CardTitle>Resumo financeiro</CardTitle></CardHeader><CardContent className="space-y-5"><SummaryGroup title="Composição" rows={[["Equipamentos", money(pricing.custoEquipamentos)], ["Estrutura", money(pricing.custoTotal - pricing.custoEquipamentos - pricing.custoOutros)], ["Outros", money(pricing.custoOutros)], ["Custo total", money(pricing.custoTotal)], ["Margem", money(pricing.valorMargem)], ["VALOR FINAL", money(pricing.valorFinal)]]} /><SummaryGroup title="Análise financeira" rows={[["Economia mensal", money(financial.economiaMensal)], ["Economia anual", money(financial.economiaAnual)], ["Payback", `${number(financial.paybackSimples, 1)} anos`], ["CO₂ evitado", `${number(financial.co2EvitadoKgAno)} kg/ano`]]} /><div className="rounded-lg border p-4"><div className="mb-3 flex items-center justify-between"><h3 className="font-bold">Financiamento</h3><Button size="sm" variant="outline" disabled={!proposalId} onClick={onAdd}><Plus className="h-4 w-4" />Adicionar</Button></div><div className="space-y-2">{financing.map((row) => <div key={row.id} className="flex items-center justify-between gap-2 rounded-md border p-2 text-sm"><label className="flex items-center gap-2"><input type="checkbox" checked={row.incluir_proposta} onChange={(event) => onToggle(row, event.target.checked)} />{row.banco} {row.prazo_meses}x {money(row.valor_parcela ?? 0)}</label><Button variant="ghost" size="icon" onClick={() => onDelete(row)}><Trash2 className="h-4 w-4" /></Button></div>)}</div><Button className="mt-3 w-full" variant="outline" disabled={!proposalId} onClick={onInsertDefaults}>Inserir simulações padrão</Button></div></CardContent></Card></aside>; }
 
 const bankRates: Record<string, number> = { BV: 1.99, Santander: 1.89, Sicredi: 1.75, "Solfácil": 1.69, Outro: 1.99 };
