@@ -7,11 +7,11 @@ type AppLogoProps = {
 
 export function AppLogo({ inverse = true }: AppLogoProps) {
   return (
-    <div className="flex items-center gap-3">
+    <div className={cn("flex items-center gap-3", inverse && "rounded-lg bg-background/95 p-2 shadow-soft")}>
       <img
         src={energizaSolarLogo}
         alt="Energiza Solar"
-        className={cn("h-12 w-auto object-contain", inverse ? "brightness-0 invert" : "")}
+        className="h-12 w-auto object-contain"
       />
     </div>
   );
