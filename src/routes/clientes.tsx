@@ -19,9 +19,9 @@ import { useDebounce } from "@/hooks/use-debounce";
 export const Route = createFileRoute("/clientes")({
   head: () => ({
     meta: [
-      { title: "Clientes — ENERGIZA SOLLAR" },
+      { title: "Clientes — ENERGIZA SOLAR" },
       { name: "description", content: "Cadastro e histórico dos clientes atendidos." },
-      { property: "og:title", content: "Clientes — ENERGIZA SOLLAR" },
+      { property: "og:title", content: "Clientes — ENERGIZA SOLAR" },
       { property: "og:description", content: "Cadastro e histórico dos clientes atendidos." },
     ],
   }),

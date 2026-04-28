@@ -17,9 +17,9 @@ type StatusRow = {
 export const Route = createFileRoute("/admin/database-status")({
   head: () => ({
     meta: [
-      { title: "Status do Banco — ENERGIZA SOLLAR" },
+      { title: "Status do Banco — ENERGIZA SOLAR" },
       { name: "description", content: "Validação administrativa das tabelas e dados iniciais." },
-      { property: "og:title", content: "Status do Banco — ENERGIZA SOLLAR" },
+      { property: "og:title", content: "Status do Banco — ENERGIZA SOLAR" },
       { property: "og:description", content: "Contagens de registros para confirmar a configuração inicial." },
     ],
   }),
@@ -135,7 +135,7 @@ function DatabaseStatusPage() {
               <ShieldAlert className="mb-4 h-12 w-12 text-destructive" />
               <h2 className="text-xl font-black text-foreground">Acesso restrito</h2>
               <p className="mt-2 max-w-md text-sm text-muted-foreground">
-                Esta página é exclusiva para administradores da ENERGIZA SOLLAR.
+                Esta página é exclusiva para administradores da ENERGIZA SOLAR.
               </p>
             </CardContent>
           </Card>

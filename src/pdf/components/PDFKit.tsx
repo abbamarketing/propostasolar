@@ -3,11 +3,11 @@ import { Image, StyleSheet, Text, View } from "@react-pdf/renderer";
 const colors = { green: "#16A34A", darkGreen: "#15803D", navy: "#0F172A", text: "#475569", light: "#F1F5F9", white: "#FFFFFF" };
 
 export function PDFHeader({ companyData }: { companyData: any }) {
-  return <View style={styles.header}>{companyData?.logo_url ? <Image src={companyData.logo_url} style={styles.logo} /> : <Text style={styles.brand}>{companyData?.nome_fantasia || "ENERGIZA SOLLAR"}</Text>}<View style={styles.headerLine} /></View>;
+  return <View style={styles.header}>{companyData?.logo_url ? <Image src={companyData.logo_url} style={styles.logo} /> : <Text style={styles.brand}>{companyData?.nome_fantasia || "ENERGIZA SOLAR"}</Text>}<View style={styles.headerLine} /></View>;
 }
 
 export function PDFFooter({ pageNumber, totalPages, companyData }: { pageNumber: number; totalPages: number; companyData: any }) {
-  return <View style={styles.footer}><Text>{companyData?.email || "energizasollar@gmail.com"} · {companyData?.telefone || "(38) 9895-9015"}</Text><Text>{pageNumber}/{totalPages}</Text></View>;
+  return <View style={styles.footer}><Text>{companyData?.email || "energizasolar@gmail.com"} · {companyData?.telefone || "(38) 9895-9015"}</Text><Text>{pageNumber}/{totalPages}</Text></View>;
 }
 
 export function SectionTitle({ children }: { children: string }) { return <Text style={styles.title}>{children}</Text>; }
