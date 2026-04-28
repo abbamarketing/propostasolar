@@ -96,7 +96,8 @@ export function useCreateClient() {
     mutationFn: async (payload: ClientInsert) => {
       const [{ data: userData }, companyId] = await Promise.all([supabase.auth.getUser(), getCompanyId()]);
       const cleanPayload = Object.fromEntries(Object.entries(payload).map(([key, value]) => [key, value === "" ? null : value])) as Record<string, unknown>;
-      const { data, error } = await supabase.from("clients").insert({ ...cleanPayload, company_id: companyId, created_by: userData.user?.id ?? null }).select().single();
+      const insertPayload = { ...cleanPayload, company_id: companyId, created_by: userData.user?.id ?? null } as Tables["clients"]["Insert"];
+      const { data, error } = await supabase.from("clients").insert(insertPayload).select().single();
       if (error) throw error;
       return data;
     },
