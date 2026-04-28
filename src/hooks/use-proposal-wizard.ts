@@ -167,11 +167,21 @@ function toDraft(row?: ProposalRow | null, fallbackClientId = ""): ProposalDraft
     payback_anos: row.payback_anos,
     payback_descontado_anos: row.payback_descontado_anos,
     co2_evitado_kg_ano: row.co2_evitado_kg_ano,
+    template: row.template ?? "on-grid-residencial",
+    observacoes_comerciais: row.observacoes_comerciais,
+    validade_dias: row.validade_dias ?? 15,
+    valido_ate: row.valido_ate,
+    personalizar_garantias: row.personalizar_garantias ?? false,
+    garantia_modulo_anos: row.garantia_modulo_anos,
+    garantia_inversor_anos: row.garantia_inversor_anos,
+    garantia_instalacao_anos: row.garantia_instalacao_anos ?? 1,
+    prazo_execucao_dias_uteis: row.prazo_execucao_dias_uteis ?? 30,
+    prazo_homologacao_dias: row.prazo_homologacao_dias ?? 90,
   };
 }
 
 function toPayload(draft: ProposalDraft): ProposalUpdate {
-  return { ...draft, status: "rascunho" };
+  return { ...draft, garantia_instalacao_anos: draft.garantia_instalacao_anos ?? 1, prazo_execucao_dias_uteis: draft.prazo_execucao_dias_uteis ?? 30, prazo_homologacao_dias: draft.prazo_homologacao_dias ?? 90, status: "rascunho" };
 }
 
 export function useProposal(proposalId?: string) {
