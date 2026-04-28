@@ -324,7 +324,7 @@ export function useProposalPhotoMutations(proposalId?: string) {
   return { upload, update, remove };
 }
 
-export function useProposalContext(proposal?: ProposalRow | null) {
+export function useProposalContext(proposal?: Pick<ProposalRow, "company_id" | "vendedor_id"> | null) {
   return useQuery({
     queryKey: ["proposal-context", proposal?.company_id, proposal?.vendedor_id],
     enabled: Boolean(proposal?.company_id || proposal?.vendedor_id),
