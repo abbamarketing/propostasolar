@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useBlocker, useNavigate } from "@tanstack/react-router";
-import { Check, ChevronsUpDown, CircleAlert, CircleHelp, Clock, Loader2, Plus, RefreshCcw, Save, Search, Trash2 } from "lucide-react";
+import { BatteryCharging, Building2, Check, ChevronsUpDown, CircleAlert, CircleHelp, Clock, GripVertical, Home, ImageIcon, Loader2, Plus, RefreshCcw, Save, Search, Tractor, Trash2, Upload, Warehouse } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -15,7 +15,10 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -23,7 +26,7 @@ import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCities, useInverters, useModules, useStructures, useTariffs, type CityRow, type InverterRow } from "@/hooks/use-catalog-data";
 import { concessionarias, useClient, useClients, useCreateClient, useUpdateClient, type ClientRow } from "@/hooks/use-clients";
-import { type ProposalDraft, useCreateFinancingOption, useDeleteFinancingOption, useProposalAutosave, useProposalFinancing, useUpsertProposalItems, useUpdateFinancingOption } from "@/hooks/use-proposal-wizard";
+import { type ProposalDraft, useCreateFinancingOption, useDeleteFinancingOption, useProposalAutosave, useProposalContext, useProposalFinancing, useProposalPhotoMutations, useProposalPhotos, useUpsertProposalItems, useUpdateFinancingOption } from "@/hooks/use-proposal-wizard";
 import { calculateFinancialAnalysis, calculatePmt, calculatePricing, defaultCableCost, defaultProjectCost, type OtherCost } from "@/lib/proposal-pricing";
 import { calculateSolarSizing } from "@/lib/solar-sizing";
 import { cn } from "@/lib/utils";
@@ -32,6 +35,7 @@ const steps = ["Cliente", "Dimensionamento", "Precificação", "Personalização
 const stepOneSchema = z.object({ client_id: z.string().uuid("Selecione um cliente para avançar.") });
 const stepTwoSchema = z.object({ modulo_id: z.string().uuid("Selecione o módulo."), inversor_id: z.string().uuid("Selecione o inversor."), kwp_instalado: z.number().positive("Informe uma potência instalada válida.") });
 const stepThreeSchema = z.object({ valor_total: z.number().positive("Defina um valor final maior que zero.") });
+const stepFourSchema = z.object({ template: z.string().min(1, "Selecione um template.") });
 
 type ProposalWizardProps = { proposalId?: string; initialClientId?: string };
 type SaveStatusProps = { state: "idle" | "saving" | "saved" | "error"; savedAt: Date | null; onRetry: () => void };
@@ -62,17 +66,18 @@ export function ProposalWizard({ proposalId, initialClientId }: ProposalWizardPr
     if (target === 1) return stepOneSchema.safeParse({ client_id: autosave.draft.client_id }).success;
     if (target === 2) return stepTwoSchema.safeParse({ modulo_id: autosave.draft.modulo_id, inversor_id: autosave.draft.inversor_id, kwp_instalado: autosave.draft.kwp_instalado ?? 0 }).success;
     if (target === 3) return stepThreeSchema.safeParse({ valor_total: autosave.draft.valor_total ?? 0 }).success;
+    if (target === 4) return stepFourSchema.safeParse({ template: autosave.draft.template ?? "on-grid-residencial" }).success;
     return false;
   }
 
   function next() {
-    const result = step === 0 ? stepOneSchema.safeParse({ client_id: autosave.draft.client_id }) : step === 1 ? stepTwoSchema.safeParse({ modulo_id: autosave.draft.modulo_id, inversor_id: autosave.draft.inversor_id, kwp_instalado: autosave.draft.kwp_instalado ?? 0 }) : stepThreeSchema.safeParse({ valor_total: autosave.draft.valor_total ?? 0 });
+    const result = step === 0 ? stepOneSchema.safeParse({ client_id: autosave.draft.client_id }) : step === 1 ? stepTwoSchema.safeParse({ modulo_id: autosave.draft.modulo_id, inversor_id: autosave.draft.inversor_id, kwp_instalado: autosave.draft.kwp_instalado ?? 0 }) : step === 2 ? stepThreeSchema.safeParse({ valor_total: autosave.draft.valor_total ?? 0 }) : stepFourSchema.safeParse({ template: autosave.draft.template ?? "on-grid-residencial" });
     if (!result.success) {
       setValidationMessage(result.error.issues[0]?.message ?? "Preencha os campos obrigatórios.");
       return;
     }
     setValidationMessage("");
-    setStep((current) => Math.min(current + 1, 3));
+    setStep((current) => Math.min(current + 1, 4));
   }
 
   function back() {
@@ -93,7 +98,7 @@ export function ProposalWizard({ proposalId, initialClientId }: ProposalWizardPr
           </div>
           <nav className="grid gap-2 md:grid-cols-5">
             {steps.map((label, index) => {
-              const completed = index === 0 ? Boolean(autosave.draft.client_id) : index === 1 ? Boolean(autosave.draft.modulo_id && autosave.draft.inversor_id && (autosave.draft.kwp_instalado ?? 0) > 0) : index === 2 ? (autosave.draft.valor_total ?? 0) > 0 : false;
+              const completed = index === 0 ? Boolean(autosave.draft.client_id) : index === 1 ? Boolean(autosave.draft.modulo_id && autosave.draft.inversor_id && (autosave.draft.kwp_instalado ?? 0) > 0) : index === 2 ? (autosave.draft.valor_total ?? 0) > 0 : index === 3 ? Boolean(autosave.draft.template) : false;
               const current = index === step;
               return <button key={label} type="button" disabled={!canOpen(index)} onClick={() => setStep(index)} className={cn("flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm font-semibold transition-colors", current && "border-primary bg-primary/10 text-primary", completed && !current && "border-success/40 bg-success/10 text-success", !current && !completed && "text-muted-foreground", !canOpen(index) && "cursor-not-allowed opacity-55")}><span className="flex h-6 w-6 items-center justify-center rounded-full border text-xs">{completed ? <Check className="h-3.5 w-3.5" /> : index + 1}</span>{label}</button>;
             })}
@@ -105,10 +110,11 @@ export function ProposalWizard({ proposalId, initialClientId }: ProposalWizardPr
         {step === 0 ? <ClientStep selectedClient={client.data ?? null} selectedClientId={autosave.draft.client_id} onSelect={(selected) => updateDraft({ client_id: selected.id, cidade_projeto: selected.endereco_cidade, uf_projeto: selected.endereco_uf, tarifa_kwh: autosave.draft.tarifa_kwh, custo_disponibilidade_kwh: defaultAvailability(selected.tipo_ligacao) })} /> : null}
         {step === 1 ? <SizingStep draft={autosave.draft} client={client.data ?? null} updateDraft={updateDraft} /> : null}
         {step === 2 ? <PricingStep proposalId={autosave.activeId} draft={autosave.draft} client={client.data ?? null} updateDraft={updateDraft} /> : null}
-        {step >= 3 ? <Card className="shadow-soft"><CardContent className="py-12 text-center text-muted-foreground">As próximas etapas serão implementadas nos próximos prompts.</CardContent></Card> : null}
+        {step === 3 ? <PersonalizationStep proposalId={autosave.activeId} proposal={autosave.proposal ?? null} draft={autosave.draft} client={client.data ?? null} updateDraft={updateDraft} /> : null}
+        {step >= 4 ? <Card className="shadow-soft"><CardContent className="py-12 text-center text-muted-foreground">A revisão e geração de PDF serão implementadas no próximo prompt.</CardContent></Card> : null}
       </main>
       <footer className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-4 py-3 backdrop-blur md:px-8">
-        <div className="flex items-center justify-between gap-3"><Button variant="outline" onClick={back}>Voltar</Button><span className="hidden text-sm text-muted-foreground md:inline">Salvo automaticamente</span><Button onClick={next} disabled={step >= 3}>Próximo</Button></div>
+        <div className="flex items-center justify-between gap-3"><Button variant="outline" onClick={back}>Voltar</Button><span className="hidden text-sm text-muted-foreground md:inline">Salvo automaticamente</span><Button onClick={next} disabled={step >= 4}>Próximo</Button></div>
       </footer>
     </div>
   );
