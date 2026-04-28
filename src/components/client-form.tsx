@@ -29,7 +29,7 @@ const optionalNumber = z.preprocess(
 const positiveMoney = z.preprocess(
   (value) => value === "" || value === null || value === undefined || Number.isNaN(value) ? 0 : Number(value),
   z.number().positive("Informe um valor maior que zero."),
-);
+) as z.ZodType<number>;
 
 export const clientFormSchema = z.object({
   tipo: z.enum(["PF", "PJ"], { required_error: "Selecione o tipo de cliente." }),
