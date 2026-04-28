@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useBlocker, useNavigate } from "@tanstack/react-router";
-import { Check, ChevronsUpDown, CircleAlert, CircleHelp, Clock, Loader2, Plus, RefreshCcw, Save, Search, UserRound } from "lucide-react";
+import { Check, ChevronsUpDown, CircleAlert, CircleHelp, Clock, Loader2, Plus, RefreshCcw, Save, Search, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -14,20 +14,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useCities, useInverters, useModules, useTariffs, type CityRow, type InverterRow, type ModuleRow } from "@/hooks/use-catalog-data";
+import { useCities, useInverters, useModules, useStructures, useTariffs, type CityRow, type InverterRow } from "@/hooks/use-catalog-data";
 import { concessionarias, useClient, useClients, useCreateClient, useUpdateClient, type ClientRow } from "@/hooks/use-clients";
-import { type ProposalDraft, useProposalAutosave } from "@/hooks/use-proposal-wizard";
+import { type ProposalDraft, useCreateFinancingOption, useDeleteFinancingOption, useProposalAutosave, useProposalFinancing, useUpsertProposalItems, useUpdateFinancingOption } from "@/hooks/use-proposal-wizard";
+import { calculateFinancialAnalysis, calculatePmt, calculatePricing, defaultCableCost, defaultProjectCost, type OtherCost } from "@/lib/proposal-pricing";
 import { calculateSolarSizing } from "@/lib/solar-sizing";
 import { cn } from "@/lib/utils";
 
 const steps = ["Cliente", "Dimensionamento", "Precificação", "Personalização", "Revisão"] as const;
 const stepOneSchema = z.object({ client_id: z.string().uuid("Selecione um cliente para avançar.") });
 const stepTwoSchema = z.object({ modulo_id: z.string().uuid("Selecione o módulo."), inversor_id: z.string().uuid("Selecione o inversor."), kwp_instalado: z.number().positive("Informe uma potência instalada válida.") });
+const stepThreeSchema = z.object({ valor_total: z.number().positive("Defina um valor final maior que zero.") });
 
 type ProposalWizardProps = { proposalId?: string; initialClientId?: string };
 type SaveStatusProps = { state: "idle" | "saving" | "saved" | "error"; savedAt: Date | null; onRetry: () => void };
@@ -57,17 +61,18 @@ export function ProposalWizard({ proposalId, initialClientId }: ProposalWizardPr
     if (target <= step) return true;
     if (target === 1) return stepOneSchema.safeParse({ client_id: autosave.draft.client_id }).success;
     if (target === 2) return stepTwoSchema.safeParse({ modulo_id: autosave.draft.modulo_id, inversor_id: autosave.draft.inversor_id, kwp_instalado: autosave.draft.kwp_instalado ?? 0 }).success;
+    if (target === 3) return stepThreeSchema.safeParse({ valor_total: autosave.draft.valor_total ?? 0 }).success;
     return false;
   }
 
   function next() {
-    const result = step === 0 ? stepOneSchema.safeParse({ client_id: autosave.draft.client_id }) : stepTwoSchema.safeParse({ modulo_id: autosave.draft.modulo_id, inversor_id: autosave.draft.inversor_id, kwp_instalado: autosave.draft.kwp_instalado ?? 0 });
+    const result = step === 0 ? stepOneSchema.safeParse({ client_id: autosave.draft.client_id }) : step === 1 ? stepTwoSchema.safeParse({ modulo_id: autosave.draft.modulo_id, inversor_id: autosave.draft.inversor_id, kwp_instalado: autosave.draft.kwp_instalado ?? 0 }) : stepThreeSchema.safeParse({ valor_total: autosave.draft.valor_total ?? 0 });
     if (!result.success) {
       setValidationMessage(result.error.issues[0]?.message ?? "Preencha os campos obrigatórios.");
       return;
     }
     setValidationMessage("");
-    setStep((current) => Math.min(current + 1, 2));
+    setStep((current) => Math.min(current + 1, 3));
   }
 
   function back() {
@@ -88,7 +93,7 @@ export function ProposalWizard({ proposalId, initialClientId }: ProposalWizardPr
           </div>
           <nav className="grid gap-2 md:grid-cols-5">
             {steps.map((label, index) => {
-              const completed = index === 0 ? Boolean(autosave.draft.client_id) : index === 1 ? Boolean(autosave.draft.modulo_id && autosave.draft.inversor_id && (autosave.draft.kwp_instalado ?? 0) > 0) : false;
+              const completed = index === 0 ? Boolean(autosave.draft.client_id) : index === 1 ? Boolean(autosave.draft.modulo_id && autosave.draft.inversor_id && (autosave.draft.kwp_instalado ?? 0) > 0) : index === 2 ? (autosave.draft.valor_total ?? 0) > 0 : false;
               const current = index === step;
               return <button key={label} type="button" disabled={!canOpen(index)} onClick={() => setStep(index)} className={cn("flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm font-semibold transition-colors", current && "border-primary bg-primary/10 text-primary", completed && !current && "border-success/40 bg-success/10 text-success", !current && !completed && "text-muted-foreground", !canOpen(index) && "cursor-not-allowed opacity-55")}><span className="flex h-6 w-6 items-center justify-center rounded-full border text-xs">{completed ? <Check className="h-3.5 w-3.5" /> : index + 1}</span>{label}</button>;
             })}
@@ -99,10 +104,11 @@ export function ProposalWizard({ proposalId, initialClientId }: ProposalWizardPr
         {validationMessage ? <Alert className="mb-4"><CircleAlert className="h-4 w-4" /><AlertTitle>Verifique antes de avançar</AlertTitle><AlertDescription>{validationMessage}</AlertDescription></Alert> : null}
         {step === 0 ? <ClientStep selectedClient={client.data ?? null} selectedClientId={autosave.draft.client_id} onSelect={(selected) => updateDraft({ client_id: selected.id, cidade_projeto: selected.endereco_cidade, uf_projeto: selected.endereco_uf, tarifa_kwh: autosave.draft.tarifa_kwh, custo_disponibilidade_kwh: defaultAvailability(selected.tipo_ligacao) })} /> : null}
         {step === 1 ? <SizingStep draft={autosave.draft} client={client.data ?? null} updateDraft={updateDraft} /> : null}
-        {step >= 2 ? <Card className="shadow-soft"><CardContent className="py-12 text-center text-muted-foreground">As próximas etapas serão implementadas nos próximos prompts.</CardContent></Card> : null}
+        {step === 2 ? <PricingStep proposalId={autosave.activeId} draft={autosave.draft} client={client.data ?? null} updateDraft={updateDraft} /> : null}
+        {step >= 3 ? <Card className="shadow-soft"><CardContent className="py-12 text-center text-muted-foreground">As próximas etapas serão implementadas nos próximos prompts.</CardContent></Card> : null}
       </main>
       <footer className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-4 py-3 backdrop-blur md:px-8">
-        <div className="flex items-center justify-between gap-3"><Button variant="outline" onClick={back}>Voltar</Button><span className="hidden text-sm text-muted-foreground md:inline">Salvo automaticamente</span><Button onClick={next} disabled={step >= 2}>Próximo</Button></div>
+        <div className="flex items-center justify-between gap-3"><Button variant="outline" onClick={back}>Voltar</Button><span className="hidden text-sm text-muted-foreground md:inline">Salvo automaticamente</span><Button onClick={next} disabled={step >= 3}>Próximo</Button></div>
       </footer>
     </div>
   );
@@ -183,6 +189,81 @@ function SizingStep({ draft, client, updateDraft }: { draft: ProposalDraft; clie
 
   return <div className="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(320px,2fr)]"><div className="space-y-4"><CardBlock title="Localização do projeto"><CitySelect cities={cities.data ?? []} value={`${draft.cidade_projeto ?? ""}/${draft.uf_projeto ?? ""}`} onSelect={(city) => updateDraft({ cidade_projeto: city.cidade, uf_projeto: city.uf, hsp_usado: city.hsp_medio })} /><NumberField label="HSP" value={hsp} hint={selectedCity ? `Cidade: ${selectedCity.hsp_medio.toFixed(2)} h/dia` : "Selecione uma cidade"} step="0.01" onChange={(value) => updateDraft({ hsp_usado: value })} /></CardBlock><CardBlock title="Concessionária e tarifa"><Select value={client?.concessionaria ?? "CEMIG"} onValueChange={() => undefined}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{concessionarias.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent></Select><TariffField value={tarifa} onChange={(value) => updateDraft({ tarifa_kwh: value })} /><NumberField label="Custo de disponibilidade (kWh)" value={disponibilidade} hint={`Padrão: ${defaultAvailability(client?.tipo_ligacao)} kWh`} onChange={(value) => updateDraft({ custo_disponibilidade_kwh: value })} /></CardBlock><CardBlock title="Parâmetros técnicos"><SliderField label="Performance Ratio" value={pr} min={0.7} max={0.9} step={0.01} suffix="%" tooltip="Eficiência real do sistema considerando perdas (cabeamento, temperatura, sujeira). Padrão: 80%." onChange={(value) => updateDraft({ performance_ratio: value })} /><SliderField label="Compensação desejada" value={metaCompensacao} min={0.8} max={1} step={0.01} suffix="%" tooltip="Percentual da conta que o sistema deve cobrir" onChange={setMetaCompensacao} /></CardBlock><CardBlock title="Seleção de equipamentos"><Select value={draft.modulo_id ?? ""} onValueChange={(id) => { const module = modules.data?.find((item) => item.id === id); updateDraft({ modulo_id: module?.id ?? null, modulo_marca: module?.marca ?? null, modulo_modelo: module?.modelo ?? null, modulo_potencia_w: module?.potencia_w ?? null, qtd_modulos: module ? Math.ceil((sizing.kWpNecessario * 1000) / module.potencia_w) : null }); }}><SelectTrigger><SelectValue placeholder="Selecione o módulo" /></SelectTrigger><SelectContent>{modules.data?.map((module) => <SelectItem key={module.id} value={module.id}>{module.marca} {module.modelo} · {module.potencia_w}W</SelectItem>)}</SelectContent></Select><NumberField label="Quantidade de módulos" value={qtdModules} hint={suggestedModules ? `Sugestão: ${suggestedModules} placas` : "Selecione um módulo"} onChange={(value) => updateDraft({ qtd_modulos: Math.round(value) })} /><Select value={draft.inversor_id ?? ""} onValueChange={(id) => { const inverter = inverters.data?.find((item) => item.id === id); updateDraft({ inversor_id: inverter?.id ?? null, inversor_marca: inverter?.marca ?? null, inversor_modelo: inverter?.modelo ?? null, inversor_potencia_kw: inverter?.potencia_kw ?? null }); }}><SelectTrigger><SelectValue placeholder="Selecione o inversor compatível" /></SelectTrigger><SelectContent>{compatibleInverters.map((inverter) => <SelectItem key={inverter.id} value={inverter.id}>{inverter.marca} {inverter.modelo} · {inverter.potencia_kw}kW · {inverter.fases ?? "fases"}</SelectItem>)}</SelectContent></Select><NumberField label="Quantidade de inversores" value={draft.qtd_inversores ?? 1} onChange={(value) => updateDraft({ qtd_inversores: Math.round(value) })} />{selectedInverter && (inverterRatio > 1.3 || inverterRatio < 0.7) ? <Alert><CircleAlert className="h-4 w-4" /><AlertTitle>Atenção à compatibilidade</AlertTitle><AlertDescription>{inverterRatio > 1.3 ? "Sistema sobredimensionado para este inversor." : "Sistema subdimensionado para este inversor."}</AlertDescription></Alert> : null}</CardBlock></div><SizingSummary contaMedia={contaMedia} tarifa={tarifa} disponibilidade={disponibilidade} meta={metaCompensacao} hsp={hsp} pr={pr} sizing={sizing} kwpInstalled={kwpInstalled} realGenerationMonthly={realGenerationMonthly} /></div>;
 }
+
+function PricingStep({ proposalId, draft, client, updateDraft }: { proposalId?: string; draft: ProposalDraft; client: ClientRow | null; updateDraft: (patch: Partial<ProposalDraft>) => void }) {
+  const modules = useModules({ search: "", ativo: true });
+  const inverters = useInverters({ search: "", ativo: true });
+  const structures = useStructures({ search: client?.tipo_telhado ?? "" });
+  const financing = useProposalFinancing(proposalId);
+  const createFinancing = useCreateFinancingOption();
+  const updateFinancing = useUpdateFinancingOption();
+  const deleteFinancing = useDeleteFinancingOption();
+  const upsertItems = useUpsertProposalItems();
+  const [manualStructure, setManualStructure] = useState(Boolean(draft.custo_estrutura));
+  const [laborMode, setLaborMode] = useState<"wp" | "fixo">("wp");
+  const [laborWp, setLaborWp] = useState(0.8);
+  const [otherCosts, setOtherCosts] = useState<OtherCost[]>([]);
+  const [financingOpen, setFinancingOpen] = useState(false);
+  const module = modules.data?.find((item) => item.id === draft.modulo_id);
+  const inverter = inverters.data?.find((item) => item.id === draft.inversor_id);
+  const qtdModulos = draft.qtd_modulos ?? 0;
+  const qtdInversores = draft.qtd_inversores ?? 1;
+  const moduleUnit = module?.preco_venda ?? 0;
+  const inverterUnit = inverter?.preco_venda ?? 0;
+  const kwp = draft.kwp_instalado ?? 0;
+  const structureMatch = (structures.data ?? []).find((item) => item.tipo_telhado === client?.tipo_telhado && item.placas_min <= qtdModulos && item.placas_max >= qtdModulos);
+  const defaultStructure = structureMatch ? structureMatch.custo_por_placa * qtdModulos : 0;
+  const structureCost = manualStructure ? draft.custo_estrutura ?? defaultStructure : defaultStructure;
+  const cableDefault = defaultCableCost(kwp);
+  const projectDefault = defaultProjectCost(kwp);
+  const cableCost = draft.custo_cabos_protecoes ?? cableDefault;
+  const projectCost = draft.custo_projeto_art ?? projectDefault;
+  const laborCost = laborMode === "wp" ? kwp * 1000 * laborWp : draft.custo_mao_obra ?? 0;
+  const margemPct = draft.margem_pct ?? 0.25;
+  const pricing = calculatePricing({ modulo: { qtd: qtdModulos, preco: moduleUnit }, inversor: { qtd: qtdInversores, preco: inverterUnit }, custoEstrutura: structureCost, custoCabosProtecoes: cableCost, custoProjetoArt: projectCost, custoMaoObra: laborCost, outrosCustos: otherCosts, margemPct });
+  const financial = calculateFinancialAnalysis({ valorInvestimento: pricing.valorFinal, geracaoMensalKwh: draft.geracao_estimada_mensal ?? 0, tarifaKwh: draft.tarifa_kwh ?? 0, custoDisponibilidadeKwh: draft.custo_disponibilidade_kwh ?? 0, reajusteTarifaAnualPct: 0.08, taxaDescontoAnualPct: 0.1, vidaUtilAnos: 25 });
+
+  useEffect(() => {
+    updateDraft({ custo_modulos: qtdModulos * moduleUnit, custo_inversor: qtdInversores * inverterUnit, custo_estrutura: structureCost, custo_cabos_protecoes: cableCost, custo_projeto_art: projectCost, custo_mao_obra: laborCost, custo_outros: pricing.custoOutros, custo_total: pricing.custoTotal, valor_total: pricing.valorFinal, valor_a_vista: pricing.valorFinal, economia_mensal: financial.economiaMensal, economia_anual: financial.economiaAnual, payback_anos: financial.paybackSimples, payback_descontado_anos: financial.paybackDescontado, co2_evitado_kg_ano: financial.co2EvitadoKgAno });
+  }, [cableCost, financial.co2EvitadoKgAno, financial.economiaAnual, financial.economiaMensal, financial.paybackDescontado, financial.paybackSimples, laborCost, moduleUnit, pricing.custoOutros, pricing.custoTotal, pricing.valorFinal, projectCost, qtdInversores, qtdModulos, inverterUnit, structureCost, updateDraft]);
+
+  useEffect(() => {
+    if (!proposalId) return;
+    const items = buildProposalItems({ draft, client, module, inverter, qtdModulos, qtdInversores, moduleUnit, inverterUnit, structureCost, cableCost, projectCost, laborCost, otherCosts });
+    const timer = window.setTimeout(() => upsertItems.mutate({ proposalId, items }), 1200);
+    return () => window.clearTimeout(timer);
+  }, [proposalId, draft.modulo_modelo, draft.inversor_modelo, client?.tipo_telhado, module?.marca, inverter?.marca, qtdModulos, qtdInversores, moduleUnit, inverterUnit, structureCost, cableCost, projectCost, laborCost, otherCosts, upsertItems]);
+
+  async function insertDefaultFinancing() {
+    if (!proposalId) return;
+    const defaults = [{ banco: "BV", prazo: 60, taxa: 1.99 }, { banco: "Solfácil", prazo: 72, taxa: 1.69 }, { banco: "Solfácil", prazo: 84, taxa: 1.69 }];
+    for (const item of defaults) {
+      const calc = calculatePmt(pricing.valorFinal, 0, item.taxa, item.prazo);
+      await createFinancing.mutateAsync({ proposal_id: proposalId, banco: item.banco, prazo_meses: item.prazo, taxa_mensal: item.taxa, entrada: 0, valor_parcela: calc.valorParcela, valor_total_financiado: calc.valorFinanciado, incluir_proposta: true });
+    }
+  }
+
+  return <div className="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(320px,2fr)]"><div className="space-y-4"><Card className="shadow-soft"><CardHeader><CardTitle>Equipamentos</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Item</TableHead><TableHead>Qtd</TableHead><TableHead>Valor unit.</TableHead><TableHead>Total</TableHead></TableRow></TableHeader><TableBody><TableRow><TableCell>Módulo {draft.modulo_marca} {draft.modulo_modelo}</TableCell><TableCell>{qtdModulos}</TableCell><TableCell>{money(moduleUnit)}</TableCell><TableCell>{money(qtdModulos * moduleUnit)}</TableCell></TableRow><TableRow><TableCell>Inversor {draft.inversor_marca} {draft.inversor_modelo}</TableCell><TableCell>{qtdInversores}</TableCell><TableCell>{money(inverterUnit)}</TableCell><TableCell>{money(qtdInversores * inverterUnit)}</TableCell></TableRow></TableBody></Table><div className="mt-4 text-right font-bold">Subtotal equipamentos: {money(pricing.custoEquipamentos)}</div></CardContent></Card><CardBlock title="Estrutura"><Info label="Tipo / placas" value={`${client?.tipo_telhado ?? "—"} · ${qtdModulos} placas`} /><Info label="Custo por placa" value={structureMatch ? money(structureMatch.custo_por_placa) : "—"} />{!structureMatch ? <Alert className="md:col-span-2"><CircleAlert className="h-4 w-4" /><AlertDescription>Configure custo de estrutura para este tipo/quantidade nos Cadastros</AlertDescription></Alert> : null}<div className="md:col-span-2"><Button type="button" variant="outline" onClick={() => setManualStructure((value) => !value)}>Editar manualmente</Button>{manualStructure ? <NumberField label="Custo de estrutura" value={structureCost} onChange={(value) => updateDraft({ custo_estrutura: value })} /> : <p className="mt-3 font-bold">Total: {money(structureCost)}</p>}</div></CardBlock><EditableCost title="Cabos e proteções" value={cableCost} hint={`Default: ${money(cableDefault)}`} onChange={(value) => updateDraft({ custo_cabos_protecoes: value })} /><EditableCost title="Projeto + ART" value={projectCost} hint={`Default: ${money(projectDefault)}`} onChange={(value) => updateDraft({ custo_projeto_art: value })} /><CardBlock title="Mão de obra"><RadioGroup value={laborMode} onValueChange={(value) => setLaborMode(value as "wp" | "fixo")} className="flex gap-3"><label className="flex items-center gap-2 rounded-lg border px-3 py-2"><RadioGroupItem value="wp" />R$/Wp</label><label className="flex items-center gap-2 rounded-lg border px-3 py-2"><RadioGroupItem value="fixo" />Fixo</label></RadioGroup>{laborMode === "wp" ? <NumberField label="Valor por Wp" value={laborWp} step="0.01" hint="Default: R$ 0,80/Wp" onChange={setLaborWp} /> : <NumberField label="Valor fixo" value={draft.custo_mao_obra ?? 0} onChange={(value) => updateDraft({ custo_mao_obra: value })} />}<Info label="Total mão de obra" value={money(laborCost)} /></CardBlock><Card className="shadow-soft"><CardHeader className="flex flex-row items-center justify-between"><CardTitle>Outros custos</CardTitle><Button type="button" variant="outline" size="sm" onClick={() => setOtherCosts((rows) => [...rows, { descricao: "", valor: 0 }])}><Plus className="h-4 w-4" />Adicionar</Button></CardHeader><CardContent className="space-y-3">{otherCosts.map((item, index) => <div key={index} className="grid gap-2 md:grid-cols-[1fr_180px_40px]"><Input placeholder="Descrição" value={item.descricao} onChange={(event) => setOtherCosts((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, descricao: event.target.value } : row))} /><Input type="number" value={item.valor} onChange={(event) => setOtherCosts((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, valor: event.target.valueAsNumber || 0 } : row))} /><Button type="button" variant="ghost" size="icon" onClick={() => setOtherCosts((rows) => rows.filter((_, rowIndex) => rowIndex !== index))}><Trash2 className="h-4 w-4" /></Button></div>)}</CardContent></Card><CardBlock title="Margem"><SliderField label="Margem aplicada" value={margemPct} min={0.1} max={0.35} step={0.01} suffix="%" tooltip="Margem aplicada sobre o custo total" onChange={(value) => updateDraft({ margem_pct: value })} /><Info label="Valor da margem" value={money(pricing.valorMargem)} /></CardBlock></div><FinancialSummary pricing={pricing} financial={financial} financing={financing.data ?? []} proposalId={proposalId} onInsertDefaults={insertDefaultFinancing} onAdd={() => setFinancingOpen(true)} onToggle={(row, checked) => updateFinancing.mutate({ id: row.id, proposal_id: row.proposal_id, incluir_proposta: checked })} onDelete={(row) => deleteFinancing.mutate({ id: row.id, proposalId: row.proposal_id })} /><FinancingDialog open={financingOpen} onOpenChange={setFinancingOpen} proposalId={proposalId} valorTotal={pricing.valorFinal} onCreate={(payload) => createFinancing.mutateAsync(payload)} /></div>;
+}
+
+function EditableCost({ title, value, hint, onChange }: { title: string; value: number; hint: string; onChange: (value: number) => void }) { return <CardBlock title={title}><NumberField label="Valor" value={value} hint={hint} onChange={onChange} /></CardBlock>; }
+
+function buildProposalItems({ draft, client, module, inverter, qtdModulos, qtdInversores, moduleUnit, inverterUnit, structureCost, cableCost, projectCost, laborCost, otherCosts }: { draft: ProposalDraft; client: ClientRow | null; module?: { marca: string; modelo: string } | null; inverter?: { marca: string; modelo: string } | null; qtdModulos: number; qtdInversores: number; moduleUnit: number; inverterUnit: number; structureCost: number; cableCost: number; projectCost: number; laborCost: number; otherCosts: OtherCost[] }) {
+  const base = [
+    { ordem: 1, categoria: "equipamento", descricao: `Módulo ${module?.marca ?? draft.modulo_marca ?? ""} ${module?.modelo ?? draft.modulo_modelo ?? ""} (${qtdModulos} unidades)`, quantidade: qtdModulos, unidade: "un", valor_unitario: moduleUnit, valor_total: qtdModulos * moduleUnit },
+    { ordem: 2, categoria: "equipamento", descricao: `Inversor ${inverter?.marca ?? draft.inversor_marca ?? ""} ${inverter?.modelo ?? draft.inversor_modelo ?? ""}`, quantidade: qtdInversores, unidade: "un", valor_unitario: inverterUnit, valor_total: qtdInversores * inverterUnit },
+    { ordem: 3, categoria: "estrutura", descricao: `Estrutura para telhado ${client?.tipo_telhado ?? "—"} (${qtdModulos} placas)`, quantidade: qtdModulos, unidade: "serviço", valor_unitario: qtdModulos > 0 ? structureCost / qtdModulos : structureCost, valor_total: structureCost },
+    { ordem: 4, categoria: "instalacao", descricao: "Cabos e proteções", quantidade: 1, unidade: "serviço", valor_unitario: cableCost, valor_total: cableCost },
+    { ordem: 5, categoria: "projeto", descricao: "Projeto técnico + ART", quantidade: 1, unidade: "serviço", valor_unitario: projectCost, valor_total: projectCost },
+    { ordem: 6, categoria: "instalacao", descricao: "Instalação e mão de obra", quantidade: 1, unidade: "serviço", valor_unitario: laborCost, valor_total: laborCost },
+  ];
+  return [...base, ...otherCosts.map((item, index) => ({ ordem: 7 + index, categoria: "outros", descricao: item.descricao || "Outros custos", quantidade: 1, unidade: "un", valor_unitario: item.valor, valor_total: item.valor }))];
+}
+
+function FinancialSummary({ pricing, financial, financing, proposalId, onInsertDefaults, onAdd, onToggle, onDelete }: { pricing: ReturnType<typeof calculatePricing>; financial: ReturnType<typeof calculateFinancialAnalysis>; financing: { id: string; proposal_id: string; banco: string | null; prazo_meses: number | null; valor_parcela: number | null; incluir_proposta: boolean }[]; proposalId?: string; onInsertDefaults: () => void; onAdd: () => void; onToggle: (row: { id: string; proposal_id: string }, checked: boolean) => void; onDelete: (row: { id: string; proposal_id: string }) => void }) { return <aside className="xl:sticky xl:top-40 xl:self-start"><Card className="shadow-soft"><CardHeader><CardTitle>Resumo financeiro</CardTitle></CardHeader><CardContent className="space-y-5"><SummaryGroup title="Composição" rows={[["Equipamentos", money(pricing.custoEquipamentos)], ["Estrutura", money(pricing.custoTotal - pricing.custoEquipamentos - pricing.custoOutros)], ["Outros", money(pricing.custoOutros)], ["Custo total", money(pricing.custoTotal)], ["Margem", money(pricing.valorMargem)], ["VALOR FINAL", money(pricing.valorFinal)]]} /><SummaryGroup title="Análise financeira" rows={[["Economia mensal", money(financial.economiaMensal)], ["Economia anual", money(financial.economiaAnual)], ["Payback", `${number(financial.paybackSimples, 1)} anos`], ["CO₂ evitado", `${number(financial.co2EvitadoKgAno)} kg/ano`]]} /><div className="rounded-lg border p-4"><div className="mb-3 flex items-center justify-between"><h3 className="font-bold">Financiamento</h3><Button size="sm" variant="outline" disabled={!proposalId} onClick={onAdd}><Plus className="h-4 w-4" />Adicionar</Button></div><div className="space-y-2">{financing.map((row) => <div key={row.id} className="flex items-center justify-between gap-2 rounded-md border p-2 text-sm"><label className="flex items-center gap-2"><input type="checkbox" checked={row.incluir_proposta} onChange={(event) => onToggle(row, event.target.checked)} />{row.banco} {row.prazo_meses}x {money(row.valor_parcela ?? 0)}</label><Button variant="ghost" size="icon" onClick={() => onDelete(row)}><Trash2 className="h-4 w-4" /></Button></div>)}</div><Button className="mt-3 w-full" variant="outline" disabled={!proposalId} onClick={onInsertDefaults}>Inserir simulações padrão</Button></div></CardContent></Card></aside>; }
+
+const bankRates: Record<string, number> = { BV: 1.99, Santander: 1.89, Sicredi: 1.75, "Solfácil": 1.69, Outro: 1.99 };
+function FinancingDialog({ open, onOpenChange, proposalId, valorTotal, onCreate }: { open: boolean; onOpenChange: (open: boolean) => void; proposalId?: string; valorTotal: number; onCreate: (payload: { proposal_id: string; banco: string; prazo_meses: number; taxa_mensal: number; entrada: number; valor_parcela: number; valor_total_financiado: number; incluir_proposta: boolean }) => Promise<unknown> }) { const form = useForm({ defaultValues: { banco: "BV", prazo: 60, taxa: 1.99, entrada: 0 } }); const banco = form.watch("banco"); const prazo = form.watch("prazo"); const taxa = form.watch("taxa"); const entrada = form.watch("entrada"); const calc = calculatePmt(valorTotal, entrada, taxa, prazo); useEffect(() => { form.setValue("taxa", bankRates[banco] ?? 1.99); }, [banco, form]); async function submit() { if (!proposalId) return; await onCreate({ proposal_id: proposalId, banco, prazo_meses: prazo, taxa_mensal: taxa, entrada, valor_parcela: calc.valorParcela, valor_total_financiado: calc.valorFinanciado, incluir_proposta: true }); onOpenChange(false); } return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent><DialogHeader><DialogTitle>Adicionar simulação</DialogTitle></DialogHeader><div className="grid gap-4"><Select value={banco} onValueChange={(value) => form.setValue("banco", value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Object.keys(bankRates).map((bank) => <SelectItem key={bank} value={bank}>{bank}</SelectItem>)}</SelectContent></Select><Select value={String(prazo)} onValueChange={(value) => form.setValue("prazo", Number(value))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{[24, 36, 48, 60, 72, 84, 96, 120].map((months) => <SelectItem key={months} value={String(months)}>{months} meses</SelectItem>)}</SelectContent></Select><NumberField label="Taxa mensal (% a.m.)" value={taxa} step="0.0001" onChange={(value) => form.setValue("taxa", value)} /><NumberField label="Entrada" value={entrada} onChange={(value) => form.setValue("entrada", value)} /><div className="rounded-lg border p-3 text-sm"><p>Parcela: <strong>{money(calc.valorParcela)}</strong></p><p>Total pago: <strong>{money(calc.totalPago)}</strong></p><p>Custo do financiamento: <strong>{money(calc.custoFinanciamento)}</strong></p></div><Button onClick={submit} disabled={!proposalId}>Salvar simulação</Button></div></DialogContent></Dialog>; }
 
 function CardBlock({ title, children }: { title: string; children: React.ReactNode }) { return <Card className="shadow-soft"><CardHeader><CardTitle>{title}</CardTitle></CardHeader><CardContent className="grid gap-4 md:grid-cols-2">{children}</CardContent></Card>; }
 function Info({ label, value }: { label: string; value: React.ReactNode }) { return <div><p className="text-xs font-semibold uppercase text-muted-foreground">{label}</p><p className="font-medium">{value || "—"}</p></div>; }

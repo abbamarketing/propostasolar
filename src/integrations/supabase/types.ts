@@ -421,6 +421,7 @@ export type Database = {
           banco: string | null
           entrada: number | null
           id: string
+          incluir_proposta: boolean
           prazo_meses: number | null
           proposal_id: string
           taxa_mensal: number | null
@@ -431,6 +432,7 @@ export type Database = {
           banco?: string | null
           entrada?: number | null
           id?: string
+          incluir_proposta?: boolean
           prazo_meses?: number | null
           proposal_id: string
           taxa_mensal?: number | null
@@ -441,6 +443,7 @@ export type Database = {
           banco?: string | null
           entrada?: number | null
           id?: string
+          incluir_proposta?: boolean
           prazo_meses?: number | null
           proposal_id?: string
           taxa_mensal?: number | null
