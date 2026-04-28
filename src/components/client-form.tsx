@@ -18,8 +18,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { type ClientRow, concessionarias, estados } from "@/hooks/use-clients";
 import { isValidCnpj, isValidCpf, onlyDigits } from "@/lib/br-validation";
 
-const optionalEmail = z.preprocess((value) => value === "" ? null : value, z.string().email("Informe um e-mail válido.").nullable().optional());
-const optionalNumber = z.preprocess((value) => value === "" || value === null || value === undefined ? null : Number(value), z.number().min(0, "Informe um valor maior ou igual a zero.").nullable().optional());
+const optionalEmail = z.preprocess(
+  (value) => value === "" ? null : value,
+  z.string().email("Informe um e-mail válido.").nullable().optional(),
+) as z.ZodType<string | null | undefined>;
+const optionalNumber = z.preprocess(
+  (value) => value === "" || value === null || value === undefined ? null : Number(value),
+  z.number().min(0, "Informe um valor maior ou igual a zero.").nullable().optional(),
+) as z.ZodType<number | null | undefined>;
 
 export const clientFormSchema = z.object({
   tipo: z.enum(["PF", "PJ"], { required_error: "Selecione o tipo de cliente." }),
