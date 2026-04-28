@@ -35,6 +35,7 @@ type SaveStatusProps = { state: "idle" | "saving" | "saved" | "error"; savedAt: 
 export function ProposalWizard({ proposalId, initialClientId }: ProposalWizardProps) {
   const navigate = useNavigate();
   const autosave = useProposalAutosave({ proposalId, initialClientId });
+  const { setDraft } = autosave;
   const [step, setStep] = useState(0);
   const [validationMessage, setValidationMessage] = useState("");
   const client = useClient(autosave.draft.client_id || undefined);
@@ -46,11 +47,11 @@ export function ProposalWizard({ proposalId, initialClientId }: ProposalWizardPr
   });
 
   const updateDraft = useCallback((patch: Partial<ProposalDraft>) => {
-    autosave.setDraft((current) => {
+    setDraft((current) => {
       const changed = Object.entries(patch).some(([key, value]) => current[key as keyof ProposalDraft] !== value);
       return changed ? { ...current, ...patch } : current;
     });
-  }, [autosave]);
+  }, [setDraft]);
 
   function canOpen(target: number) {
     if (target <= step) return true;
