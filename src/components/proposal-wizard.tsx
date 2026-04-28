@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useBlocker, useNavigate } from "@tanstack/react-router";
-import { Check, ChevronsUpDown, CircleAlert, CircleHelp, Clock, Loader2, Plus, RefreshCcw, Save, Search, Trash2 } from "lucide-react";
+import { BatteryCharging, Building2, Check, ChevronsUpDown, CircleAlert, CircleHelp, Clock, GripVertical, Home, ImageIcon, Loader2, Plus, RefreshCcw, Save, Search, Tractor, Trash2, Upload, Warehouse } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -15,7 +15,10 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -23,7 +26,7 @@ import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCities, useInverters, useModules, useStructures, useTariffs, type CityRow, type InverterRow } from "@/hooks/use-catalog-data";
 import { concessionarias, useClient, useClients, useCreateClient, useUpdateClient, type ClientRow } from "@/hooks/use-clients";
-import { type ProposalDraft, useCreateFinancingOption, useDeleteFinancingOption, useProposalAutosave, useProposalFinancing, useUpsertProposalItems, useUpdateFinancingOption } from "@/hooks/use-proposal-wizard";
+import { type ProposalDraft, useCreateFinancingOption, useDeleteFinancingOption, useProposalAutosave, useProposalContext, useProposalFinancing, useProposalPhotoMutations, useProposalPhotos, useUpsertProposalItems, useUpdateFinancingOption } from "@/hooks/use-proposal-wizard";
 import { calculateFinancialAnalysis, calculatePmt, calculatePricing, defaultCableCost, defaultProjectCost, type OtherCost } from "@/lib/proposal-pricing";
 import { calculateSolarSizing } from "@/lib/solar-sizing";
 import { cn } from "@/lib/utils";
@@ -32,6 +35,7 @@ const steps = ["Cliente", "Dimensionamento", "Precificação", "Personalização
 const stepOneSchema = z.object({ client_id: z.string().uuid("Selecione um cliente para avançar.") });
 const stepTwoSchema = z.object({ modulo_id: z.string().uuid("Selecione o módulo."), inversor_id: z.string().uuid("Selecione o inversor."), kwp_instalado: z.number().positive("Informe uma potência instalada válida.") });
 const stepThreeSchema = z.object({ valor_total: z.number().positive("Defina um valor final maior que zero.") });
+const stepFourSchema = z.object({ template: z.string().min(1, "Selecione um template.") });
 
 type ProposalWizardProps = { proposalId?: string; initialClientId?: string };
 type SaveStatusProps = { state: "idle" | "saving" | "saved" | "error"; savedAt: Date | null; onRetry: () => void };
@@ -62,17 +66,18 @@ export function ProposalWizard({ proposalId, initialClientId }: ProposalWizardPr
     if (target === 1) return stepOneSchema.safeParse({ client_id: autosave.draft.client_id }).success;
     if (target === 2) return stepTwoSchema.safeParse({ modulo_id: autosave.draft.modulo_id, inversor_id: autosave.draft.inversor_id, kwp_instalado: autosave.draft.kwp_instalado ?? 0 }).success;
     if (target === 3) return stepThreeSchema.safeParse({ valor_total: autosave.draft.valor_total ?? 0 }).success;
+    if (target === 4) return stepFourSchema.safeParse({ template: autosave.draft.template ?? "on-grid-residencial" }).success;
     return false;
   }
 
   function next() {
-    const result = step === 0 ? stepOneSchema.safeParse({ client_id: autosave.draft.client_id }) : step === 1 ? stepTwoSchema.safeParse({ modulo_id: autosave.draft.modulo_id, inversor_id: autosave.draft.inversor_id, kwp_instalado: autosave.draft.kwp_instalado ?? 0 }) : stepThreeSchema.safeParse({ valor_total: autosave.draft.valor_total ?? 0 });
+    const result = step === 0 ? stepOneSchema.safeParse({ client_id: autosave.draft.client_id }) : step === 1 ? stepTwoSchema.safeParse({ modulo_id: autosave.draft.modulo_id, inversor_id: autosave.draft.inversor_id, kwp_instalado: autosave.draft.kwp_instalado ?? 0 }) : step === 2 ? stepThreeSchema.safeParse({ valor_total: autosave.draft.valor_total ?? 0 }) : stepFourSchema.safeParse({ template: autosave.draft.template ?? "on-grid-residencial" });
     if (!result.success) {
       setValidationMessage(result.error.issues[0]?.message ?? "Preencha os campos obrigatórios.");
       return;
     }
     setValidationMessage("");
-    setStep((current) => Math.min(current + 1, 3));
+    setStep((current) => Math.min(current + 1, 4));
   }
 
   function back() {
@@ -93,7 +98,7 @@ export function ProposalWizard({ proposalId, initialClientId }: ProposalWizardPr
           </div>
           <nav className="grid gap-2 md:grid-cols-5">
             {steps.map((label, index) => {
-              const completed = index === 0 ? Boolean(autosave.draft.client_id) : index === 1 ? Boolean(autosave.draft.modulo_id && autosave.draft.inversor_id && (autosave.draft.kwp_instalado ?? 0) > 0) : index === 2 ? (autosave.draft.valor_total ?? 0) > 0 : false;
+              const completed = index === 0 ? Boolean(autosave.draft.client_id) : index === 1 ? Boolean(autosave.draft.modulo_id && autosave.draft.inversor_id && (autosave.draft.kwp_instalado ?? 0) > 0) : index === 2 ? (autosave.draft.valor_total ?? 0) > 0 : index === 3 ? Boolean(autosave.draft.template) : false;
               const current = index === step;
               return <button key={label} type="button" disabled={!canOpen(index)} onClick={() => setStep(index)} className={cn("flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm font-semibold transition-colors", current && "border-primary bg-primary/10 text-primary", completed && !current && "border-success/40 bg-success/10 text-success", !current && !completed && "text-muted-foreground", !canOpen(index) && "cursor-not-allowed opacity-55")}><span className="flex h-6 w-6 items-center justify-center rounded-full border text-xs">{completed ? <Check className="h-3.5 w-3.5" /> : index + 1}</span>{label}</button>;
             })}
@@ -105,10 +110,11 @@ export function ProposalWizard({ proposalId, initialClientId }: ProposalWizardPr
         {step === 0 ? <ClientStep selectedClient={client.data ?? null} selectedClientId={autosave.draft.client_id} onSelect={(selected) => updateDraft({ client_id: selected.id, cidade_projeto: selected.endereco_cidade, uf_projeto: selected.endereco_uf, tarifa_kwh: autosave.draft.tarifa_kwh, custo_disponibilidade_kwh: defaultAvailability(selected.tipo_ligacao) })} /> : null}
         {step === 1 ? <SizingStep draft={autosave.draft} client={client.data ?? null} updateDraft={updateDraft} /> : null}
         {step === 2 ? <PricingStep proposalId={autosave.activeId} draft={autosave.draft} client={client.data ?? null} updateDraft={updateDraft} /> : null}
-        {step >= 3 ? <Card className="shadow-soft"><CardContent className="py-12 text-center text-muted-foreground">As próximas etapas serão implementadas nos próximos prompts.</CardContent></Card> : null}
+        {step === 3 ? <PersonalizationStep proposalId={autosave.activeId} proposal={autosave.proposal ?? null} draft={autosave.draft} client={client.data ?? null} updateDraft={updateDraft} /> : null}
+        {step >= 4 ? <Card className="shadow-soft"><CardContent className="py-12 text-center text-muted-foreground">A revisão e geração de PDF serão implementadas no próximo prompt.</CardContent></Card> : null}
       </main>
       <footer className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-4 py-3 backdrop-blur md:px-8">
-        <div className="flex items-center justify-between gap-3"><Button variant="outline" onClick={back}>Voltar</Button><span className="hidden text-sm text-muted-foreground md:inline">Salvo automaticamente</span><Button onClick={next} disabled={step >= 3}>Próximo</Button></div>
+        <div className="flex items-center justify-between gap-3"><Button variant="outline" onClick={back}>Voltar</Button><span className="hidden text-sm text-muted-foreground md:inline">Salvo automaticamente</span><Button onClick={next} disabled={step >= 4}>Próximo</Button></div>
       </footer>
     </div>
   );
@@ -259,6 +265,69 @@ function buildProposalItems({ draft, client, module, inverter, qtdModulos, qtdIn
   ];
   return [...base, ...otherCosts.map((item, index) => ({ ordem: 7 + index, categoria: "outros", descricao: item.descricao || "Outros custos", quantidade: 1, unidade: "un", valor_unitario: item.valor, valor_total: item.valor }))];
 }
+
+const proposalTemplates = [
+  { value: "on-grid-residencial", title: "On-Grid Residencial", description: "Para sistemas conectados à rede em residências", icon: Home },
+  { value: "on-grid-comercial", title: "On-Grid Comercial", description: "Para empresas, lojas, escritórios", icon: Building2 },
+  { value: "off-grid", title: "Off-Grid (isolado)", description: "Sistemas com baterias, sem rede", icon: BatteryCharging },
+  { value: "rural", title: "Rural / Agronegócio", description: "Propriedades rurais, irrigação", icon: Tractor },
+  { value: "comercial-gp", title: "Comercial Grande Porte", description: "Acima de 75 kWp", icon: Warehouse },
+];
+
+function PersonalizationStep({ proposalId, proposal, draft, client, updateDraft }: { proposalId?: string; proposal: { numero: string | null; company_id: string; vendedor_id: string | null } | null; draft: ProposalDraft; client: ClientRow | null; updateDraft: (patch: Partial<ProposalDraft>) => void }) {
+  const modules = useModules({ search: "", ativo: true });
+  const inverters = useInverters({ search: "", ativo: true });
+  const photos = useProposalPhotos(proposalId);
+  const photoMutations = useProposalPhotoMutations(proposalId);
+  const context = useProposalContext(proposal);
+  const financing = useProposalFinancing(proposalId);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const selectedTemplate = proposalTemplates.find((item) => item.value === (draft.template ?? "on-grid-residencial")) ?? proposalTemplates[0];
+  const selectedModule = modules.data?.find((item) => item.id === draft.modulo_id);
+  const selectedInverter = inverters.data?.find((item) => item.id === draft.inversor_id);
+  const validade = draft.validade_dias ?? 15;
+  const validUntil = useMemo(() => addDays(validade), [validade]);
+  const commercialNotes = draft.observacoes_comerciais ?? "";
+
+  useEffect(() => {
+    if (!draft.template) updateDraft({ template: "on-grid-residencial" });
+  }, [draft.template, updateDraft]);
+
+  useEffect(() => {
+    if (draft.valido_ate !== validUntil.iso) updateDraft({ valido_ate: validUntil.iso });
+  }, [draft.valido_ate, updateDraft, validUntil.iso]);
+
+  useEffect(() => {
+    if (!draft.personalizar_garantias) {
+      updateDraft({ garantia_modulo_anos: selectedModule?.garantia_geracao_anos ?? 25, garantia_inversor_anos: selectedInverter?.garantia_anos ?? 10, garantia_instalacao_anos: 1, prazo_execucao_dias_uteis: 30, prazo_homologacao_dias: 90 });
+    }
+  }, [draft.personalizar_garantias, selectedInverter?.garantia_anos, selectedModule?.garantia_geracao_anos, updateDraft]);
+
+  function onFiles(files: FileList | null) {
+    if (!files || !proposalId) return;
+    const current = photos.data?.length ?? 0;
+    photoMutations.upload.mutate(Array.from(files).slice(0, Math.max(0, 6 - current)));
+  }
+
+  function reorder(dropId: string) {
+    if (!dragId || dragId === dropId || !photos.data) return;
+    const rows = [...photos.data];
+    const from = rows.findIndex((item) => item.id === dragId);
+    const to = rows.findIndex((item) => item.id === dropId);
+    if (from < 0 || to < 0) return;
+    const [moved] = rows.splice(from, 1);
+    rows.splice(to, 0, moved);
+    rows.forEach((photo, ordem) => photoMutations.update.mutate({ id: photo.id, legenda: photo.legenda, ordem }));
+    setDragId(null);
+  }
+
+  return <div className="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(320px,2fr)]"><div className="space-y-4"><Card className="shadow-soft"><CardHeader><CardTitle>Template da proposta</CardTitle></CardHeader><CardContent><RadioGroup value={draft.template ?? "on-grid-residencial"} onValueChange={(template) => updateDraft({ template })} className="grid gap-3 md:grid-cols-2">{proposalTemplates.map((template) => <TemplateCard key={template.value} template={template} selected={template.value === (draft.template ?? "on-grid-residencial")} />)}</RadioGroup></CardContent></Card><Card className="shadow-soft"><CardHeader><CardTitle>Fotos de projetos similares</CardTitle></CardHeader><CardContent className="space-y-4"><label className={cn("flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed p-6 text-center transition-colors", !proposalId && "cursor-not-allowed opacity-60")}><Upload className="mb-2 h-8 w-8 text-muted-foreground" /><span className="font-semibold">Arraste imagens ou clique para enviar</span><span className="text-sm text-muted-foreground">JPG, PNG ou WebP · até 6 fotos · 5MB cada</span><input className="sr-only" type="file" multiple accept="image/jpeg,image/png,image/webp" disabled={!proposalId || (photos.data?.length ?? 0) >= 6} onChange={(event) => onFiles(event.target.files)} /></label><Button type="button" variant="outline" disabled>{/* TODO: selecionar fotos da biblioteca da empresa */}<ImageIcon className="h-4 w-4" />Selecionar da biblioteca</Button><div className="grid gap-3 md:grid-cols-2">{photos.data?.map((photo) => <div key={photo.id} draggable onDragStart={() => setDragId(photo.id)} onDragOver={(event) => event.preventDefault()} onDrop={() => reorder(photo.id)} className="rounded-lg border bg-card p-2"><div className="relative aspect-video overflow-hidden rounded-md bg-muted"><img src={photo.url} alt={photo.legenda || "Foto de projeto similar"} className="h-full w-full object-cover" /><GripVertical className="absolute left-2 top-2 h-5 w-5 rounded bg-background/80 p-0.5" /></div><div className="mt-2 flex gap-2"><Input maxLength={100} placeholder="Legenda da foto" value={photo.legenda ?? ""} onChange={(event) => photoMutations.update.mutate({ id: photo.id, ordem: photo.ordem ?? 0, legenda: event.target.value.slice(0, 100) })} /><Button type="button" variant="ghost" size="icon" onClick={() => photoMutations.remove.mutate(photo.id)}><Trash2 className="h-4 w-4" /></Button></div></div>)}</div></CardContent></Card><Card className="shadow-soft"><CardHeader><CardTitle>Observações comerciais</CardTitle></CardHeader><CardContent className="space-y-2"><Textarea rows={8} maxLength={2000} value={commercialNotes} placeholder="Ex: Prazo de entrega de 45 dias após assinatura. Condições especiais para pagamento à vista..." onChange={(event) => updateDraft({ observacoes_comerciais: event.target.value.slice(0, 2000) })} /><p className="text-right text-xs text-muted-foreground">{commercialNotes.length}/2000 caracteres</p></CardContent></Card><CardBlock title="Validade e detalhes"><NumberField label="Validade da proposta (dias)" value={validade} hint={`Válida até ${validUntil.label}`} onChange={(value) => updateDraft({ validade_dias: Math.max(1, Math.round(value)) })} /><Info label="Número da proposta" value={proposal?.numero ?? "Gerando..."} /><SellerCard seller={context.data?.seller ?? null} /></CardBlock><Collapsible defaultOpen={false}><Card className="shadow-soft"><CardHeader><CollapsibleTrigger asChild><button type="button" className="flex w-full items-center justify-between text-left"><CardTitle>Garantias e prazos</CardTitle><Switch checked={draft.personalizar_garantias} onCheckedChange={(checked) => updateDraft({ personalizar_garantias: checked })} /></button></CollapsibleTrigger></CardHeader><CollapsibleContent><CardContent className="grid gap-4 md:grid-cols-2">{draft.personalizar_garantias ? <><NumberField label="Garantia do módulo (anos)" value={draft.garantia_modulo_anos ?? selectedModule?.garantia_geracao_anos ?? 25} onChange={(value) => updateDraft({ garantia_modulo_anos: Math.round(value) })} /><NumberField label="Garantia do inversor (anos)" value={draft.garantia_inversor_anos ?? selectedInverter?.garantia_anos ?? 10} onChange={(value) => updateDraft({ garantia_inversor_anos: Math.round(value) })} /><NumberField label="Garantia da instalação (anos)" value={draft.garantia_instalacao_anos ?? 1} onChange={(value) => updateDraft({ garantia_instalacao_anos: Math.round(value) })} /><NumberField label="Prazo de execução (dias úteis)" value={draft.prazo_execucao_dias_uteis ?? 30} onChange={(value) => updateDraft({ prazo_execucao_dias_uteis: Math.round(value) })} /><NumberField label="Prazo de homologação (dias)" value={draft.prazo_homologacao_dias ?? 90} onChange={(value) => updateDraft({ prazo_homologacao_dias: Math.round(value) })} /></> : <div className="md:col-span-2 grid gap-3 md:grid-cols-3"><Info label="Módulo" value={`${draft.garantia_modulo_anos ?? selectedModule?.garantia_geracao_anos ?? 25} anos`} /><Info label="Inversor" value={`${draft.garantia_inversor_anos ?? selectedInverter?.garantia_anos ?? 10} anos`} /><Info label="Instalação" value="1 ano" /><Info label="Execução" value="30 dias úteis" /><Info label="Homologação" value="90 dias" /></div>}</CardContent></CollapsibleContent></Card></Collapsible></div><ProposalCoverPreview template={selectedTemplate} draft={draft} proposal={proposal} client={client} company={context.data?.company ?? null} photosCount={photos.data?.length ?? 0} financingCount={financing.data?.filter((item) => item.incluir_proposta).length ?? 0} /></div>;
+}
+
+function TemplateCard({ template, selected }: { template: (typeof proposalTemplates)[number]; selected: boolean }) { const Icon = template.icon; return <label className={cn("cursor-pointer rounded-lg border p-4 transition-colors", selected && "border-primary bg-primary/10")}><RadioGroupItem value={template.value} className="sr-only" /><div className="mb-3 flex aspect-[16/9] items-center justify-center rounded-md bg-muted"><Icon className="h-12 w-12 text-primary" /></div><p className="font-bold">{template.title}</p><p className="text-sm text-muted-foreground">{template.description}</p></label>; }
+function SellerCard({ seller }: { seller: { nome: string; email: string; telefone: string | null; avatar_url: string | null; cargo: string | null } | null }) { return <div className="md:col-span-2 rounded-lg border p-3"><p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Vendedor responsável</p><div className="flex items-center gap-3"><Avatar>{seller?.avatar_url ? <img src={seller.avatar_url} alt={seller.nome} className="h-full w-full object-cover" /> : null}<AvatarFallback>{seller?.nome?.slice(0, 2).toUpperCase() ?? "VD"}</AvatarFallback></Avatar><div><p className="font-semibold">{seller?.nome ?? "Usuário logado"}</p><p className="text-sm text-muted-foreground">{seller?.email ?? "—"} {seller?.telefone ? `· ${seller.telefone}` : ""}</p></div></div></div>; }
+function ProposalCoverPreview({ template, draft, proposal, client, company, photosCount, financingCount }: { template: (typeof proposalTemplates)[number]; draft: ProposalDraft; proposal: { numero: string | null } | null; client: ClientRow | null; company: { nome_fantasia: string | null; razao_social: string; logo_url: string | null } | null; photosCount: number; financingCount: number }) { const Icon = template.icon; const blocks = ["Capa", "Compromisso ENERGIZA SOLLAR", "Análise da conta", "Sistema dimensionado", "Equipamentos detalhados", "Análise financeira", financingCount > 0 ? "Opções de pagamento" : null, photosCount > 0 ? "Fotos de projetos similares" : null, "Observações", "Garantias e prazos", "Validade e dados de contato"].filter(Boolean) as string[]; return <aside className="xl:sticky xl:top-40 xl:self-start"><Card className="shadow-soft"><CardHeader><CardTitle>Preview da capa</CardTitle></CardHeader><CardContent className="space-y-4"><div className="overflow-hidden rounded-lg border bg-card"><div className="bg-primary p-5 text-primary-foreground"><div className="mb-10 flex items-center justify-between gap-3"><div className="flex items-center gap-3">{company?.logo_url ? <img src={company.logo_url} alt={company.nome_fantasia ?? company.razao_social} className="h-10 w-10 rounded bg-background object-contain" /> : <div className="flex h-10 w-10 items-center justify-center rounded bg-background/20"><Icon className="h-6 w-6" /></div>}<span className="text-sm font-bold">{company?.nome_fantasia ?? "ENERGIZA SOLLAR"}</span></div><span className="text-xs">{new Date().toLocaleDateString("pt-BR")}</span></div><p className="text-xs uppercase tracking-wide opacity-80">{template.title}</p><h2 className="mt-2 text-3xl font-black">PROPOSTA COMERCIAL</h2></div><div className="space-y-4 p-5"><Info label="Número" value={proposal?.numero ?? "2026-0001"} /><Info label="Cliente" value={client?.nome ?? "Cliente selecionado"} /><Info label="Sistema" value={`${number(draft.kwp_instalado ?? 0, 2)} kWp`} /><Info label="Valor total" value={money(draft.valor_total ?? 0)} /></div></div><div className="rounded-lg border p-4"><h3 className="mb-3 font-bold">Blocos do PDF</h3><div className="space-y-2">{blocks.map((block) => <p key={block} className="flex items-center gap-2 text-sm"><Check className="h-4 w-4 text-success" />{block}</p>)}</div></div></CardContent></Card></aside>; }
+function addDays(days: number) { const date = new Date(); date.setDate(date.getDate() + Math.max(1, Math.round(days || 15))); return { iso: date.toISOString().slice(0, 10), label: date.toLocaleDateString("pt-BR") }; }
 
 function FinancialSummary({ pricing, financial, financing, proposalId, onInsertDefaults, onAdd, onToggle, onDelete }: { pricing: ReturnType<typeof calculatePricing>; financial: ReturnType<typeof calculateFinancialAnalysis>; financing: { id: string; proposal_id: string; banco: string | null; prazo_meses: number | null; valor_parcela: number | null; incluir_proposta: boolean }[]; proposalId?: string; onInsertDefaults: () => void; onAdd: () => void; onToggle: (row: { id: string; proposal_id: string }, checked: boolean) => void; onDelete: (row: { id: string; proposal_id: string }) => void }) { return <aside className="xl:sticky xl:top-40 xl:self-start"><Card className="shadow-soft"><CardHeader><CardTitle>Resumo financeiro</CardTitle></CardHeader><CardContent className="space-y-5"><SummaryGroup title="Composição" rows={[["Equipamentos", money(pricing.custoEquipamentos)], ["Estrutura", money(pricing.custoTotal - pricing.custoEquipamentos - pricing.custoOutros)], ["Outros", money(pricing.custoOutros)], ["Custo total", money(pricing.custoTotal)], ["Margem", money(pricing.valorMargem)], ["VALOR FINAL", money(pricing.valorFinal)]]} /><SummaryGroup title="Análise financeira" rows={[["Economia mensal", money(financial.economiaMensal)], ["Economia anual", money(financial.economiaAnual)], ["Payback", `${number(financial.paybackSimples, 1)} anos`], ["CO₂ evitado", `${number(financial.co2EvitadoKgAno)} kg/ano`]]} /><div className="rounded-lg border p-4"><div className="mb-3 flex items-center justify-between"><h3 className="font-bold">Financiamento</h3><Button size="sm" variant="outline" disabled={!proposalId} onClick={onAdd}><Plus className="h-4 w-4" />Adicionar</Button></div><div className="space-y-2">{financing.map((row) => <div key={row.id} className="flex items-center justify-between gap-2 rounded-md border p-2 text-sm"><label className="flex items-center gap-2"><input type="checkbox" checked={row.incluir_proposta} onChange={(event) => onToggle(row, event.target.checked)} />{row.banco} {row.prazo_meses}x {money(row.valor_parcela ?? 0)}</label><Button variant="ghost" size="icon" onClick={() => onDelete(row)}><Trash2 className="h-4 w-4" /></Button></div>)}</div><Button className="mt-3 w-full" variant="outline" disabled={!proposalId} onClick={onInsertDefaults}>Inserir simulações padrão</Button></div></CardContent></Card></aside>; }
 

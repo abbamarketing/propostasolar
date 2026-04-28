@@ -558,6 +558,9 @@ export type Database = {
           economia_mensal: number | null
           energia_compensar_kwh: number | null
           enviada_em: string | null
+          garantia_instalacao_anos: number
+          garantia_inversor_anos: number | null
+          garantia_modulo_anos: number | null
           geracao_estimada_anual: number | null
           geracao_estimada_mensal: number | null
           hsp_usado: number | null
@@ -579,6 +582,9 @@ export type Database = {
           payback_descontado_anos: number | null
           pdf_url: string | null
           performance_ratio: number | null
+          personalizar_garantias: boolean
+          prazo_execucao_dias_uteis: number
+          prazo_homologacao_dias: number
           qtd_inversores: number | null
           qtd_modulos: number | null
           recusada_em: string | null
@@ -614,6 +620,9 @@ export type Database = {
           economia_mensal?: number | null
           energia_compensar_kwh?: number | null
           enviada_em?: string | null
+          garantia_instalacao_anos?: number
+          garantia_inversor_anos?: number | null
+          garantia_modulo_anos?: number | null
           geracao_estimada_anual?: number | null
           geracao_estimada_mensal?: number | null
           hsp_usado?: number | null
@@ -635,6 +644,9 @@ export type Database = {
           payback_descontado_anos?: number | null
           pdf_url?: string | null
           performance_ratio?: number | null
+          personalizar_garantias?: boolean
+          prazo_execucao_dias_uteis?: number
+          prazo_homologacao_dias?: number
           qtd_inversores?: number | null
           qtd_modulos?: number | null
           recusada_em?: string | null
@@ -670,6 +682,9 @@ export type Database = {
           economia_mensal?: number | null
           energia_compensar_kwh?: number | null
           enviada_em?: string | null
+          garantia_instalacao_anos?: number
+          garantia_inversor_anos?: number | null
+          garantia_modulo_anos?: number | null
           geracao_estimada_anual?: number | null
           geracao_estimada_mensal?: number | null
           hsp_usado?: number | null
@@ -691,6 +706,9 @@ export type Database = {
           payback_descontado_anos?: number | null
           pdf_url?: string | null
           performance_ratio?: number | null
+          personalizar_garantias?: boolean
+          prazo_execucao_dias_uteis?: number
+          prazo_homologacao_dias?: number
           qtd_inversores?: number | null
           qtd_modulos?: number | null
           recusada_em?: string | null

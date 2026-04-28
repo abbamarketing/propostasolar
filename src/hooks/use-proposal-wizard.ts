@@ -9,6 +9,8 @@ type ProposalUpdate = Database["public"]["Tables"]["proposals"]["Update"];
 type ProposalItemInsert = Database["public"]["Tables"]["proposal_items"]["Insert"];
 type FinancingRow = Database["public"]["Tables"]["proposal_financing_options"]["Row"];
 type FinancingInsert = Database["public"]["Tables"]["proposal_financing_options"]["Insert"];
+type ProposalPhotoRow = Database["public"]["Tables"]["proposal_photos"]["Row"];
+type ProposalPhotoInsert = Database["public"]["Tables"]["proposal_photos"]["Insert"];
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
@@ -52,6 +54,16 @@ export type ProposalDraft = {
   payback_anos: number | null;
   payback_descontado_anos: number | null;
   co2_evitado_kg_ano: number | null;
+  template: string | null;
+  observacoes_comerciais: string | null;
+  validade_dias: number | null;
+  valido_ate: string | null;
+  personalizar_garantias: boolean;
+  garantia_modulo_anos: number | null;
+  garantia_inversor_anos: number | null;
+  garantia_instalacao_anos: number | null;
+  prazo_execucao_dias_uteis: number | null;
+  prazo_homologacao_dias: number | null;
 };
 
 export const emptyDraft: ProposalDraft = {
@@ -94,6 +106,16 @@ export const emptyDraft: ProposalDraft = {
   payback_anos: null,
   payback_descontado_anos: null,
   co2_evitado_kg_ano: null,
+  template: "on-grid-residencial",
+  observacoes_comerciais: null,
+  validade_dias: 15,
+  valido_ate: null,
+  personalizar_garantias: false,
+  garantia_modulo_anos: null,
+  garantia_inversor_anos: null,
+  garantia_instalacao_anos: 1,
+  prazo_execucao_dias_uteis: 30,
+  prazo_homologacao_dias: 90,
 };
 
 async function getCompanyId() {
@@ -145,11 +167,21 @@ function toDraft(row?: ProposalRow | null, fallbackClientId = ""): ProposalDraft
     payback_anos: row.payback_anos,
     payback_descontado_anos: row.payback_descontado_anos,
     co2_evitado_kg_ano: row.co2_evitado_kg_ano,
+    template: row.template ?? "on-grid-residencial",
+    observacoes_comerciais: row.observacoes_comerciais,
+    validade_dias: row.validade_dias ?? 15,
+    valido_ate: row.valido_ate,
+    personalizar_garantias: row.personalizar_garantias ?? false,
+    garantia_modulo_anos: row.garantia_modulo_anos,
+    garantia_inversor_anos: row.garantia_inversor_anos,
+    garantia_instalacao_anos: row.garantia_instalacao_anos ?? 1,
+    prazo_execucao_dias_uteis: row.prazo_execucao_dias_uteis ?? 30,
+    prazo_homologacao_dias: row.prazo_homologacao_dias ?? 90,
   };
 }
 
 function toPayload(draft: ProposalDraft): ProposalUpdate {
-  return { ...draft, status: "rascunho" };
+  return { ...draft, garantia_instalacao_anos: draft.garantia_instalacao_anos ?? 1, prazo_execucao_dias_uteis: draft.prazo_execucao_dias_uteis ?? 30, prazo_homologacao_dias: draft.prazo_homologacao_dias ?? 90, status: "rascunho" };
 }
 
 export function useProposal(proposalId?: string) {
@@ -235,6 +267,76 @@ export function useDeleteFinancingOption() {
       return proposalId;
     },
     onSuccess: (proposalId) => queryClient.invalidateQueries({ queryKey: ["proposal-financing", proposalId] }),
+  });
+}
+
+export function useProposalPhotos(proposalId?: string) {
+  return useQuery({
+    queryKey: ["proposal-photos", proposalId],
+    enabled: Boolean(proposalId),
+    queryFn: async () => {
+      const { data, error } = await supabase.from("proposal_photos").select("*").eq("proposal_id", proposalId ?? "").order("ordem");
+      if (error) throw error;
+      return data as ProposalPhotoRow[];
+    },
+  });
+}
+
+export function useProposalPhotoMutations(proposalId?: string) {
+  const queryClient = useQueryClient();
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["proposal-photos", proposalId] });
+  const upload = useMutation({
+    mutationFn: async (files: File[]) => {
+      if (!proposalId) throw new Error("Salve a proposta antes de anexar fotos.");
+      const accepted = files.slice(0, 6);
+      const rows: ProposalPhotoInsert[] = [];
+      for (const [index, file] of accepted.entries()) {
+        if (!file.type.match(/^image\/(jpeg|png|webp)$/)) throw new Error("Envie apenas JPG, PNG ou WebP.");
+        if (file.size > 5 * 1024 * 1024) throw new Error("Cada imagem deve ter até 5MB.");
+        const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+        const path = `proposals/${proposalId}/photos/${Date.now()}-${index}.${ext}`;
+        const { error: uploadError } = await supabase.storage.from("proposal-photos").upload(path, file, { upsert: false });
+        if (uploadError) throw uploadError;
+        const { data } = supabase.storage.from("proposal-photos").getPublicUrl(path);
+        rows.push({ proposal_id: proposalId, url: data.publicUrl, legenda: "", ordem: index });
+      }
+      const { data, error } = await supabase.from("proposal_photos").insert(rows).select();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: invalidate,
+  });
+  const update = useMutation({
+    mutationFn: async (photo: Pick<ProposalPhotoRow, "id" | "legenda" | "ordem">) => {
+      const { data, error } = await supabase.from("proposal_photos").update({ legenda: photo.legenda, ordem: photo.ordem }).eq("id", photo.id).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: invalidate,
+  });
+  const remove = useMutation({
+    mutationFn: async (photoId: string) => {
+      const { error } = await supabase.from("proposal_photos").delete().eq("id", photoId);
+      if (error) throw error;
+    },
+    onSuccess: invalidate,
+  });
+  return { upload, update, remove };
+}
+
+export function useProposalContext(proposal?: Pick<ProposalRow, "company_id" | "vendedor_id"> | null) {
+  return useQuery({
+    queryKey: ["proposal-context", proposal?.company_id, proposal?.vendedor_id],
+    enabled: Boolean(proposal?.company_id || proposal?.vendedor_id),
+    queryFn: async () => {
+      const [companyResult, sellerResult] = await Promise.all([
+        proposal?.company_id ? supabase.from("companies").select("nome_fantasia, razao_social, logo_url, email, telefone, whatsapp").eq("id", proposal.company_id).single() : Promise.resolve({ data: null, error: null }),
+        proposal?.vendedor_id ? supabase.from("user_profiles").select("nome, email, telefone, avatar_url, cargo").eq("id", proposal.vendedor_id).single() : Promise.resolve({ data: null, error: null }),
+      ]);
+      if (companyResult.error) throw companyResult.error;
+      if (sellerResult.error) throw sellerResult.error;
+      return { company: companyResult.data, seller: sellerResult.data };
+    },
   });
 }
 
