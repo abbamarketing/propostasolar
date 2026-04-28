@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useBlocker, useNavigate } from "@tanstack/react-router";
-import { BatteryCharging, Building2, Check, ChevronsUpDown, CircleAlert, CircleHelp, Clock, GripVertical, Home, ImageIcon, Loader2, Plus, RefreshCcw, Save, Search, Tractor, Trash2, Upload, Warehouse } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { BatteryCharging, Building2, Check, ChevronsUpDown, CircleAlert, CircleHelp, Clock, Copy, Download, ExternalLink, FileText, GripVertical, Home, ImageIcon, Loader2, LogOut, Plus, RefreshCcw, Save, Search, Tractor, Trash2, Upload, Warehouse } from "lucide-react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { ClientForm, type ClientFormValues } from "@/components/client-form";
@@ -26,10 +26,13 @@ import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCities, useInverters, useModules, useStructures, useTariffs, type CityRow, type InverterRow } from "@/hooks/use-catalog-data";
 import { concessionarias, useClient, useClients, useCreateClient, useUpdateClient, type ClientRow } from "@/hooks/use-clients";
+import { useProposalForPdf, useProposalPdfActions } from "@/hooks/use-proposal-pdf";
 import { type ProposalDraft, useCreateFinancingOption, useDeleteFinancingOption, useProposalAutosave, useProposalContext, useProposalFinancing, useProposalPhotoMutations, useProposalPhotos, useUpsertProposalItems, useUpdateFinancingOption } from "@/hooks/use-proposal-wizard";
 import { calculateFinancialAnalysis, calculatePmt, calculatePricing, defaultCableCost, defaultProjectCost, type OtherCost } from "@/lib/proposal-pricing";
 import { calculateSolarSizing } from "@/lib/solar-sizing";
 import { cn } from "@/lib/utils";
+
+const ProposalPdfViewer = lazy(() => import("@/components/proposal-pdf-viewer"));
 
 const steps = ["Cliente", "Dimensionamento", "Precificação", "Personalização", "Revisão"] as const;
 const stepOneSchema = z.object({ client_id: z.string().uuid("Selecione um cliente para avançar.") });
