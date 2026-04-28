@@ -9,6 +9,8 @@ type ProposalUpdate = Database["public"]["Tables"]["proposals"]["Update"];
 type ProposalItemInsert = Database["public"]["Tables"]["proposal_items"]["Insert"];
 type FinancingRow = Database["public"]["Tables"]["proposal_financing_options"]["Row"];
 type FinancingInsert = Database["public"]["Tables"]["proposal_financing_options"]["Insert"];
+type ProposalPhotoRow = Database["public"]["Tables"]["proposal_photos"]["Row"];
+type ProposalPhotoInsert = Database["public"]["Tables"]["proposal_photos"]["Insert"];
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
@@ -52,6 +54,16 @@ export type ProposalDraft = {
   payback_anos: number | null;
   payback_descontado_anos: number | null;
   co2_evitado_kg_ano: number | null;
+  template: string | null;
+  observacoes_comerciais: string | null;
+  validade_dias: number | null;
+  valido_ate: string | null;
+  personalizar_garantias: boolean;
+  garantia_modulo_anos: number | null;
+  garantia_inversor_anos: number | null;
+  garantia_instalacao_anos: number | null;
+  prazo_execucao_dias_uteis: number | null;
+  prazo_homologacao_dias: number | null;
 };
 
 export const emptyDraft: ProposalDraft = {
@@ -94,6 +106,16 @@ export const emptyDraft: ProposalDraft = {
   payback_anos: null,
   payback_descontado_anos: null,
   co2_evitado_kg_ano: null,
+  template: "on-grid-residencial",
+  observacoes_comerciais: null,
+  validade_dias: 15,
+  valido_ate: null,
+  personalizar_garantias: false,
+  garantia_modulo_anos: null,
+  garantia_inversor_anos: null,
+  garantia_instalacao_anos: 1,
+  prazo_execucao_dias_uteis: 30,
+  prazo_homologacao_dias: 90,
 };
 
 async function getCompanyId() {
