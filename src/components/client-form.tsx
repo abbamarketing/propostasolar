@@ -26,11 +26,6 @@ const optionalNumber = z.preprocess(
   (value) => value === "" || value === null || value === undefined || Number.isNaN(value) ? null : Number(value),
   z.number().min(0, "Informe um valor maior ou igual a zero.").nullable().optional(),
 ) as z.ZodType<number | null | undefined>;
-const positiveMoney = z.preprocess(
-  (value) => value === "" || value === null || value === undefined || Number.isNaN(value) ? 0 : Number(value),
-  z.number().positive("Informe um valor maior que zero."),
-) as z.ZodType<number>;
-
 export const clientFormSchema = z.object({
   tipo: z.enum(["PF", "PJ"], { required_error: "Selecione o tipo de cliente." }),
   nome: z.string().trim().min(2, "Informe pelo menos 2 caracteres."),
@@ -51,7 +46,7 @@ export const clientFormSchema = z.object({
   numero_instalacao: z.string().trim().optional().nullable(),
   tipo_ligacao: z.enum(["monofasica", "bifasica", "trifasica"], { required_error: "Selecione o tipo de ligação." }),
   tipo_telhado: z.string().min(1, "Selecione o tipo de telhado."),
-  conta_luz_media: positiveMoney,
+  conta_luz_media: optionalNumber,
   consumo_medio_kwh: optionalNumber,
   conta_luz_url: z.string().optional().nullable(),
   observacoes: z.string().max(2000, "Use no máximo 2000 caracteres.").optional().nullable(),
@@ -135,12 +130,14 @@ export function ClientForm({ initialData, onSubmit, isSubmitting = false }: Clie
   const [cnpjLoading, setCnpjLoading] = useState(false);
   const [lightBill, setLightBill] = useState<File | null>(null);
   const [mobileStep, setMobileStep] = useState(0);
-  const form = useForm<ClientFormValues>({ resolver: zodResolver(clientFormSchema), values: clientToFormValues(initialData) });
+  const formValues = useMemo(() => clientToFormValues(initialData), [initialData]);
+  const form = useForm<ClientFormValues>({ resolver: zodResolver(clientFormSchema), defaultValues: formValues });
   const tipo = form.watch("tipo");
   const telefone = form.watch("telefone");
   const previewUrl = useMemo(() => lightBill && lightBill.type.startsWith("image/") ? URL.createObjectURL(lightBill) : null, [lightBill]);
 
   useEffect(() => { firstInputRef.current?.focus(); }, []);
+  useEffect(() => { form.reset(formValues); }, [form, formValues]);
   useEffect(() => { if (sameWhatsapp) form.setValue("whatsapp", telefone ?? "", { shouldValidate: true }); }, [form, sameWhatsapp, telefone]);
   useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
 

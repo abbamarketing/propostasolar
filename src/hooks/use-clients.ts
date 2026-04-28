@@ -95,12 +95,14 @@ export function useCreateClient() {
   return useMutation({
     mutationFn: async (payload: ClientInsert) => {
       const [{ data: userData }, companyId] = await Promise.all([supabase.auth.getUser(), getCompanyId()]);
-      const { data, error } = await supabase.from("clients").insert({ ...payload, company_id: companyId, created_by: userData.user?.id ?? null }).select().single();
+      const cleanPayload = Object.fromEntries(Object.entries(payload).map(([key, value]) => [key, value === "" ? null : value])) as Record<string, unknown>;
+      const insertPayload = { ...cleanPayload, company_id: companyId, created_by: userData.user?.id ?? null } as Tables["clients"]["Insert"];
+      const { data, error } = await supabase.from("clients").insert(insertPayload).select().single();
       if (error) throw error;
       return data;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["clients"] }); toast.success("Cliente criado com sucesso."); },
-    onError: () => toast.error("Não foi possível salvar o cliente."),
+    onError: (error) => toast.error(error instanceof Error ? error.message : "Não foi possível salvar o cliente."),
   });
 }
 
