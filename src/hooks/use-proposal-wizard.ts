@@ -1,0 +1,184 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
+
+type ProposalRow = Database["public"]["Tables"]["proposals"]["Row"];
+type ProposalUpdate = Database["public"]["Tables"]["proposals"]["Update"];
+
+type SaveState = "idle" | "saving" | "saved" | "error";
+
+export type ProposalDraft = {
+  client_id: string;
+  cidade_projeto: string | null;
+  uf_projeto: string | null;
+  hsp_usado: number | null;
+  tarifa_kwh: number | null;
+  custo_disponibilidade_kwh: number | null;
+  performance_ratio: number | null;
+  consumo_estimado_kwh: number | null;
+  energia_compensar_kwh: number | null;
+  kwp_necessario: number | null;
+  geracao_estimada_mensal: number | null;
+  geracao_estimada_anual: number | null;
+  modulo_id: string | null;
+  modulo_marca: string | null;
+  modulo_modelo: string | null;
+  modulo_potencia_w: number | null;
+  qtd_modulos: number | null;
+  kwp_instalado: number | null;
+  inversor_id: string | null;
+  inversor_marca: string | null;
+  inversor_modelo: string | null;
+  inversor_potencia_kw: number | null;
+  qtd_inversores: number | null;
+};
+
+export const emptyDraft: ProposalDraft = {
+  client_id: "",
+  cidade_projeto: null,
+  uf_projeto: null,
+  hsp_usado: null,
+  tarifa_kwh: null,
+  custo_disponibilidade_kwh: null,
+  performance_ratio: 0.8,
+  consumo_estimado_kwh: null,
+  energia_compensar_kwh: null,
+  kwp_necessario: null,
+  geracao_estimada_mensal: null,
+  geracao_estimada_anual: null,
+  modulo_id: null,
+  modulo_marca: null,
+  modulo_modelo: null,
+  modulo_potencia_w: null,
+  qtd_modulos: null,
+  kwp_instalado: null,
+  inversor_id: null,
+  inversor_marca: null,
+  inversor_modelo: null,
+  inversor_potencia_kw: null,
+  qtd_inversores: 1,
+};
+
+async function getCompanyId() {
+  const { data, error } = await supabase.from("user_profiles").select("company_id").single();
+  if (error) throw error;
+  if (!data.company_id) throw new Error("Empresa não vinculada ao usuário.");
+  return data.company_id;
+}
+
+function toDraft(row?: ProposalRow | null, fallbackClientId = ""): ProposalDraft {
+  if (!row) return { ...emptyDraft, client_id: fallbackClientId };
+  return {
+    client_id: row.client_id,
+    cidade_projeto: row.cidade_projeto,
+    uf_projeto: row.uf_projeto,
+    hsp_usado: row.hsp_usado,
+    tarifa_kwh: row.tarifa_kwh,
+    custo_disponibilidade_kwh: row.custo_disponibilidade_kwh,
+    performance_ratio: row.performance_ratio ?? 0.8,
+    consumo_estimado_kwh: row.consumo_estimado_kwh,
+    energia_compensar_kwh: row.energia_compensar_kwh,
+    kwp_necessario: row.kwp_necessario,
+    geracao_estimada_mensal: row.geracao_estimada_mensal,
+    geracao_estimada_anual: row.geracao_estimada_anual,
+    modulo_id: row.modulo_id,
+    modulo_marca: row.modulo_marca,
+    modulo_modelo: row.modulo_modelo,
+    modulo_potencia_w: row.modulo_potencia_w,
+    qtd_modulos: row.qtd_modulos,
+    kwp_instalado: row.kwp_instalado,
+    inversor_id: row.inversor_id,
+    inversor_marca: row.inversor_marca,
+    inversor_modelo: row.inversor_modelo,
+    inversor_potencia_kw: row.inversor_potencia_kw,
+    qtd_inversores: row.qtd_inversores ?? 1,
+  };
+}
+
+function toPayload(draft: ProposalDraft): ProposalUpdate {
+  return { ...draft, status: "rascunho" };
+}
+
+export function useProposal(proposalId?: string) {
+  return useQuery({
+    queryKey: ["proposal", proposalId],
+    enabled: Boolean(proposalId),
+    queryFn: async () => {
+      const { data, error } = await supabase.from("proposals").select("*").eq("id", proposalId ?? "").single();
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useProposalAutosave({ proposalId, initialClientId }: { proposalId?: string; initialClientId?: string }) {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const proposal = useProposal(proposalId);
+  const [draft, setDraft] = useState<ProposalDraft>(() => ({ ...emptyDraft, client_id: initialClientId ?? "" }));
+  const [activeId, setActiveId] = useState(proposalId);
+  const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const hydrated = useRef(false);
+  const lastSavedJson = useRef(JSON.stringify(draft));
+
+  useEffect(() => {
+    if (proposal.data && !hydrated.current) {
+      const next = toDraft(proposal.data);
+      setDraft(next);
+      lastSavedJson.current = JSON.stringify(next);
+      setSavedAt(new Date(proposal.data.updated_at));
+      hydrated.current = true;
+    }
+  }, [proposal.data]);
+
+  useEffect(() => {
+    if (!proposalId && initialClientId && !draft.client_id) setDraft((current) => ({ ...current, client_id: initialClientId }));
+  }, [draft.client_id, initialClientId, proposalId]);
+
+  const mutation = useMutation({
+    mutationFn: async (payload: ProposalDraft) => {
+      if (!payload.client_id) return null;
+      setSaveState("saving");
+      if (!activeId) {
+        const [{ data: userData }, companyId] = await Promise.all([supabase.auth.getUser(), getCompanyId()]);
+        const { data, error } = await supabase.from("proposals").insert({ ...toPayload(payload), client_id: payload.client_id, company_id: companyId, vendedor_id: userData.user?.id ?? null }).select().single();
+        if (error) throw error;
+        return data;
+      }
+      const { data, error } = await supabase.from("proposals").update(toPayload(payload)).eq("id", activeId).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      if (!data) return;
+      setActiveId(data.id);
+      setSaveState("saved");
+      setSavedAt(new Date());
+      setHasUnsavedChanges(false);
+      const json = JSON.stringify(toDraft(data));
+      lastSavedJson.current = json;
+      queryClient.setQueryData(["proposal", data.id], data);
+      if (!proposalId) navigate({ to: "/propostas/$id/editar", params: { id: data.id }, replace: true });
+    },
+    onError: () => setSaveState("error"),
+  });
+
+  const draftJson = useMemo(() => JSON.stringify(draft), [draft]);
+
+  useEffect(() => {
+    if (draftJson === lastSavedJson.current || !draft.client_id) return;
+    setHasUnsavedChanges(true);
+    const timer = window.setTimeout(() => mutation.mutate(draft), 1000);
+    return () => window.clearTimeout(timer);
+  }, [draft, draft.client_id, draftJson, mutation]);
+
+  function retry() {
+    mutation.mutate(draft);
+  }
+
+  return { proposal: proposal.data, isLoading: proposal.isLoading, draft, setDraft, activeId, saveState, savedAt, hasUnsavedChanges, retry, isSaving: mutation.isPending };
+}

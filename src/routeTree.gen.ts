@@ -21,6 +21,7 @@ import { Route as PropostasIdRouteImport } from './routes/propostas.$id'
 import { Route as ClientesNovoRouteImport } from './routes/clientes.novo'
 import { Route as ClientesIdRouteImport } from './routes/clientes.$id'
 import { Route as AdminDatabaseStatusRouteImport } from './routes/admin.database-status'
+import { Route as PropostasIdEditarRouteImport } from './routes/propostas.$id.editar'
 import { Route as ClientesIdEditarRouteImport } from './routes/clientes.$id.editar'
 
 const PropostasRoute = PropostasRouteImport.update({
@@ -83,6 +84,11 @@ const AdminDatabaseStatusRoute = AdminDatabaseStatusRouteImport.update({
   path: '/admin/database-status',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PropostasIdEditarRoute = PropostasIdEditarRouteImport.update({
+  id: '/editar',
+  path: '/editar',
+  getParentRoute: () => PropostasIdRoute,
+} as any)
 const ClientesIdEditarRoute = ClientesIdEditarRouteImport.update({
   id: '/editar',
   path: '/editar',
@@ -100,9 +106,10 @@ export interface FileRoutesByFullPath {
   '/admin/database-status': typeof AdminDatabaseStatusRoute
   '/clientes/$id': typeof ClientesIdRouteWithChildren
   '/clientes/novo': typeof ClientesNovoRoute
-  '/propostas/$id': typeof PropostasIdRoute
+  '/propostas/$id': typeof PropostasIdRouteWithChildren
   '/propostas/nova': typeof PropostasNovaRoute
   '/clientes/$id/editar': typeof ClientesIdEditarRoute
+  '/propostas/$id/editar': typeof PropostasIdEditarRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -115,9 +122,10 @@ export interface FileRoutesByTo {
   '/admin/database-status': typeof AdminDatabaseStatusRoute
   '/clientes/$id': typeof ClientesIdRouteWithChildren
   '/clientes/novo': typeof ClientesNovoRoute
-  '/propostas/$id': typeof PropostasIdRoute
+  '/propostas/$id': typeof PropostasIdRouteWithChildren
   '/propostas/nova': typeof PropostasNovaRoute
   '/clientes/$id/editar': typeof ClientesIdEditarRoute
+  '/propostas/$id/editar': typeof PropostasIdEditarRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -131,9 +139,10 @@ export interface FileRoutesById {
   '/admin/database-status': typeof AdminDatabaseStatusRoute
   '/clientes/$id': typeof ClientesIdRouteWithChildren
   '/clientes/novo': typeof ClientesNovoRoute
-  '/propostas/$id': typeof PropostasIdRoute
+  '/propostas/$id': typeof PropostasIdRouteWithChildren
   '/propostas/nova': typeof PropostasNovaRoute
   '/clientes/$id/editar': typeof ClientesIdEditarRoute
+  '/propostas/$id/editar': typeof PropostasIdEditarRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
     | '/propostas/$id'
     | '/propostas/nova'
     | '/clientes/$id/editar'
+    | '/propostas/$id/editar'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -166,6 +176,7 @@ export interface FileRouteTypes {
     | '/propostas/$id'
     | '/propostas/nova'
     | '/clientes/$id/editar'
+    | '/propostas/$id/editar'
   id:
     | '__root__'
     | '/'
@@ -181,6 +192,7 @@ export interface FileRouteTypes {
     | '/propostas/$id'
     | '/propostas/nova'
     | '/clientes/$id/editar'
+    | '/propostas/$id/editar'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -280,6 +292,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDatabaseStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/propostas/$id/editar': {
+      id: '/propostas/$id/editar'
+      path: '/editar'
+      fullPath: '/propostas/$id/editar'
+      preLoaderRoute: typeof PropostasIdEditarRouteImport
+      parentRoute: typeof PropostasIdRoute
+    }
     '/clientes/$id/editar': {
       id: '/clientes/$id/editar'
       path: '/editar'
@@ -316,13 +335,25 @@ const ClientesRouteWithChildren = ClientesRoute._addFileChildren(
   ClientesRouteChildren,
 )
 
+interface PropostasIdRouteChildren {
+  PropostasIdEditarRoute: typeof PropostasIdEditarRoute
+}
+
+const PropostasIdRouteChildren: PropostasIdRouteChildren = {
+  PropostasIdEditarRoute: PropostasIdEditarRoute,
+}
+
+const PropostasIdRouteWithChildren = PropostasIdRoute._addFileChildren(
+  PropostasIdRouteChildren,
+)
+
 interface PropostasRouteChildren {
-  PropostasIdRoute: typeof PropostasIdRoute
+  PropostasIdRoute: typeof PropostasIdRouteWithChildren
   PropostasNovaRoute: typeof PropostasNovaRoute
 }
 
 const PropostasRouteChildren: PropostasRouteChildren = {
-  PropostasIdRoute: PropostasIdRoute,
+  PropostasIdRoute: PropostasIdRouteWithChildren,
   PropostasNovaRoute: PropostasNovaRoute,
 }
 
