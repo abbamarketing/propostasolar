@@ -88,6 +88,11 @@ export function ProposalWizard({ proposalId, initialClientId }: ProposalWizardPr
     else setStep((current) => Math.max(0, current - 1));
   }
 
+  function exitWizard() {
+    if ((autosave.proposal?.status ?? "rascunho") === "rascunho" && !window.confirm("A proposta ainda está em rascunho. Deseja sair mesmo assim?")) return;
+    navigate({ to: "/propostas" });
+  }
+
   return (
     <div className="min-h-screen bg-background pb-24 text-foreground">
       <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur">
@@ -114,10 +119,10 @@ export function ProposalWizard({ proposalId, initialClientId }: ProposalWizardPr
         {step === 1 ? <SizingStep draft={autosave.draft} client={client.data ?? null} updateDraft={updateDraft} /> : null}
         {step === 2 ? <PricingStep proposalId={autosave.activeId} draft={autosave.draft} client={client.data ?? null} updateDraft={updateDraft} /> : null}
         {step === 3 ? <PersonalizationStep proposalId={autosave.activeId} proposal={autosave.proposal ?? null} draft={autosave.draft} client={client.data ?? null} updateDraft={updateDraft} /> : null}
-        {step >= 4 ? <Card className="shadow-soft"><CardContent className="py-12 text-center text-muted-foreground">A revisão e geração de PDF serão implementadas no próximo prompt.</CardContent></Card> : null}
+        {step >= 4 ? <ReviewPdfStep proposalId={autosave.activeId} draft={autosave.draft} onExit={exitWizard} /> : null}
       </main>
       <footer className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-4 py-3 backdrop-blur md:px-8">
-        <div className="flex items-center justify-between gap-3"><Button variant="outline" onClick={back}>Voltar</Button><span className="hidden text-sm text-muted-foreground md:inline">Salvo automaticamente</span><Button onClick={next} disabled={step >= 4}>Próximo</Button></div>
+        <div className="flex items-center justify-between gap-3"><Button variant="outline" onClick={back}>Voltar</Button><span className="hidden text-sm text-muted-foreground md:inline">Salvo automaticamente</span>{step >= 4 ? <Button variant="secondary" onClick={exitWizard}><LogOut className="h-4 w-4" />Sair</Button> : <Button onClick={next}>Próximo</Button>}</div>
       </footer>
     </div>
   );
