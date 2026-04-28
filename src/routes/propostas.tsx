@@ -18,10 +18,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useDebounce } from "@/hooks/use-debounce";
-import { useDeleteProposal, useDuplicateProposal, useProposalsList, useProposalSellers, useUpdateProposalStatus, type ProposalStatus } from "@/hooks/use-proposals";
+import { proposalSortableColumns, useBulkUpdateProposalStatus, useDeleteProposal, useDuplicateProposal, useProposalsList, useProposalSellers, useUpdateProposalStatus, type ProposalSort, type ProposalStatus } from "@/hooks/use-proposals";
 
 const searchSchema = z.object({ page: z.coerce.number().catch(1), q: z.string().catch(""), status: z.string().catch(""), seller: z.string().catch(""), city: z.string().catch(""), sort: z.string().catch("updated_at"), dir: z.enum(["asc", "desc"]).catch("desc") });
 const statuses = Object.keys(statusLabels) as ProposalStatus[];
+type ProposalSearch = z.infer<typeof searchSchema>;
 
 export const Route = createFileRoute("/propostas")({
   validateSearch: zodValidator(searchSchema),
@@ -38,13 +39,13 @@ function ProposalsPage() {
   const q = useDebounce(search.q, 300);
   const activeStatuses = search.status ? (search.status.split(",").filter(Boolean) as ProposalStatus[]) : [];
   const filters = useMemo(() => ({ search: q, statuses: activeStatuses, from: range?.from, to: range?.to, sellerId: search.seller || undefined, city: search.city || undefined, minValue: valueRange[0] || undefined, maxValue: valueRange[1] < 500000 ? valueRange[1] : undefined }), [q, activeStatuses.join(","), range, search.seller, search.city, valueRange]);
-  const sortColumn = ["numero", "valor_total", "created_at", "updated_at", "valido_ate"].includes(search.sort) ? search.sort as any : "updated_at";
+  const sortColumn: ProposalSort["column"] = (proposalSortableColumns as readonly string[]).includes(search.sort) ? search.sort as ProposalSort["column"] : "updated_at";
   const { data, isLoading } = useProposalsList({ filters, page: search.page, pageSize: 20, sort: { column: sortColumn, direction: search.dir } });
   const sellers = useProposalSellers();
   const totalPages = Math.max(1, Math.ceil((data?.count ?? 0) / 20));
   const hasFilters = Boolean(search.q || search.status || search.seller || search.city || range || valueRange[0] || valueRange[1] < 500000);
 
-  const setSearch = (patch: Partial<typeof search>) => navigate({ search: (prev: any) => ({ ...prev, ...patch }) });
+  const setSearch = (patch: Partial<ProposalSearch>) => navigate({ search: (prev: ProposalSearch) => ({ ...prev, ...patch }) });
   const toggleStatus = (status: ProposalStatus) => { const next = activeStatuses.includes(status) ? activeStatuses.filter((s) => s !== status) : [...activeStatuses, status]; setSearch({ status: next.join(","), page: 1 }); };
   const toggleSort = (column: string) => setSearch({ sort: column, dir: search.sort === column && search.dir === "asc" ? "desc" : "asc" });
   const clearFilters = () => { setRange(null); setValueRange([0, 500000]); navigate({ search: { page: 1, q: "", status: "", seller: "", city: "", sort: "updated_at", dir: "desc" } }); };
@@ -67,7 +68,8 @@ function RowActions({ proposal }: { proposal: any }) {
 }
 
 function BulkStatus({ ids, status }: { ids: string[]; status: ProposalStatus }) {
-  return <Button size="sm" variant="outline" onClick={() => ids.forEach(() => {})}><Check /> Marcar como enviadas</Button>;
+  const bulk = useBulkUpdateProposalStatus();
+  return <Button size="sm" variant="outline" disabled={bulk.isPending || !ids.length} onClick={() => bulk.mutate({ ids, status })}><Check /> Marcar como enviadas</Button>;
 }
 function BulkDelete({ ids, rows }: { ids: string[]; rows: any[] }) {
   const del = useDeleteProposal();
