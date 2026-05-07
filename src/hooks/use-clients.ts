@@ -26,9 +26,13 @@ export type ClientListParams = {
 const pageSize = 20;
 
 async function getCompanyId() {
-  const { data, error } = await supabase.from("user_profiles").select("company_id").single();
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError) throw userError;
+  if (!userData.user) throw new Error("Faça login novamente para cadastrar clientes.");
+
+  const { data, error } = await supabase.from("user_profiles").select("company_id").eq("id", userData.user.id).maybeSingle();
   if (error) throw error;
-  if (!data.company_id) throw new Error("Empresa não vinculada ao usuário.");
+  if (!data?.company_id) throw new Error("Empresa não vinculada ao usuário.");
   return data.company_id;
 }
 
