@@ -37,6 +37,7 @@ const navItems = [
   { label: "Propostas", to: "/propostas", icon: FileText },
   { label: "Clientes", to: "/clientes", icon: Users },
   { label: "Cadastros", to: "/cadastros", icon: BookOpen },
+  { label: "Tutorial", to: "/tutorial", icon: HelpCircle },
   { label: "Configurações", to: "/configuracoes", icon: Settings },
 ] as const;
 

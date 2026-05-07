@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TutorialRouteImport } from './routes/tutorial'
 import { Route as PropostasRouteImport } from './routes/propostas'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -24,6 +25,11 @@ import { Route as AdminDatabaseStatusRouteImport } from './routes/admin.database
 import { Route as PropostasIdEditarRouteImport } from './routes/propostas.$id.editar'
 import { Route as ClientesIdEditarRouteImport } from './routes/clientes.$id.editar'
 
+const TutorialRoute = TutorialRouteImport.update({
+  id: '/tutorial',
+  path: '/tutorial',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PropostasRoute = PropostasRouteImport.update({
   id: '/propostas',
   path: '/propostas',
@@ -103,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/propostas': typeof PropostasRouteWithChildren
+  '/tutorial': typeof TutorialRoute
   '/admin/database-status': typeof AdminDatabaseStatusRoute
   '/clientes/$id': typeof ClientesIdRouteWithChildren
   '/clientes/novo': typeof ClientesNovoRoute
@@ -119,6 +126,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/propostas': typeof PropostasRouteWithChildren
+  '/tutorial': typeof TutorialRoute
   '/admin/database-status': typeof AdminDatabaseStatusRoute
   '/clientes/$id': typeof ClientesIdRouteWithChildren
   '/clientes/novo': typeof ClientesNovoRoute
@@ -136,6 +144,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/propostas': typeof PropostasRouteWithChildren
+  '/tutorial': typeof TutorialRoute
   '/admin/database-status': typeof AdminDatabaseStatusRoute
   '/clientes/$id': typeof ClientesIdRouteWithChildren
   '/clientes/novo': typeof ClientesNovoRoute
@@ -154,6 +163,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/propostas'
+    | '/tutorial'
     | '/admin/database-status'
     | '/clientes/$id'
     | '/clientes/novo'
@@ -170,6 +180,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/propostas'
+    | '/tutorial'
     | '/admin/database-status'
     | '/clientes/$id'
     | '/clientes/novo'
@@ -186,6 +197,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/propostas'
+    | '/tutorial'
     | '/admin/database-status'
     | '/clientes/$id'
     | '/clientes/novo'
@@ -203,11 +215,19 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
   PropostasRoute: typeof PropostasRouteWithChildren
+  TutorialRoute: typeof TutorialRoute
   AdminDatabaseStatusRoute: typeof AdminDatabaseStatusRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/tutorial': {
+      id: '/tutorial'
+      path: '/tutorial'
+      fullPath: '/tutorial'
+      preLoaderRoute: typeof TutorialRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/propostas': {
       id: '/propostas'
       path: '/propostas'
@@ -369,6 +389,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
   PropostasRoute: PropostasRouteWithChildren,
+  TutorialRoute: TutorialRoute,
   AdminDatabaseStatusRoute: AdminDatabaseStatusRoute,
 }
 export const routeTree = rootRouteImport
