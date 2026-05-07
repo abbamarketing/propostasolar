@@ -4,6 +4,7 @@ import {
   BookOpen,
   ChevronDown,
   FileText,
+  HelpCircle,
   LogOut,
   Menu,
   Moon,
