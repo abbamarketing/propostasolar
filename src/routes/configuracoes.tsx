@@ -27,7 +27,7 @@ export const Route = createFileRoute("/configuracoes")({
 });
 
 function useProfile() {
-  return useQuery({ queryKey: ["my-profile-settings"], queryFn: async () => { const { data, error } = await supabase.from("user_profiles").select("*").single(); if (error) throw error; return data; } });
+  return useQuery({ queryKey: ["my-profile-settings"], queryFn: async () => { const { data: userData, error: userError } = await supabase.auth.getUser(); if (userError) throw userError; if (!userData.user) throw new Error("Faça login novamente."); const { data, error } = await supabase.from("user_profiles").select("*").eq("id", userData.user.id).maybeSingle(); if (error) throw error; if (!data) throw new Error("Perfil não encontrado."); return data; } });
 }
 function useCompany(companyId?: string | null) {
   return useQuery({ queryKey: ["company-settings", companyId], enabled: Boolean(companyId), queryFn: async () => { const { data, error } = await supabase.from("companies").select("*").eq("id", companyId!).single(); if (error) throw error; return data; } });
