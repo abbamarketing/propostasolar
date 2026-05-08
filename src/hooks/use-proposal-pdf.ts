@@ -8,12 +8,13 @@ export function useProposalForPdf(proposalId?: string) {
     queryKey: ["proposal-pdf", proposalId],
     enabled: Boolean(proposalId),
     queryFn: async (): Promise<ProposalPdfData> => {
-      const { data: proposal, error } = await supabase.from("proposals").select("*").eq("id", proposalId ?? "").single();
+      const { data: proposal, error } = await supabase.from("proposals").select("*").eq("id", proposalId ?? "").maybeSingle();
       if (error) throw error;
+      if (!proposal) throw new Error("Proposta não encontrada.");
       const [client, company, seller, items, financing, photos, city] = await Promise.all([
-        supabase.from("clients").select("*").eq("id", proposal.client_id).single(),
-        supabase.from("companies").select("*").eq("id", proposal.company_id).single(),
-        proposal.vendedor_id ? supabase.from("user_profiles").select("*").eq("id", proposal.vendedor_id).single() : Promise.resolve({ data: null, error: null }),
+        supabase.from("clients").select("*").eq("id", proposal.client_id).maybeSingle(),
+        supabase.from("companies").select("*").eq("id", proposal.company_id).maybeSingle(),
+        proposal.vendedor_id ? supabase.from("user_profiles").select("*").eq("id", proposal.vendedor_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
         supabase.from("proposal_items").select("*").eq("proposal_id", proposal.id).order("ordem"),
         supabase.from("proposal_financing_options").select("*").eq("proposal_id", proposal.id).eq("incluir_proposta", true).order("prazo_meses"),
         supabase.from("proposal_photos").select("*").eq("proposal_id", proposal.id).order("ordem"),
