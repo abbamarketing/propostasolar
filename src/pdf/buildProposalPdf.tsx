@@ -6,12 +6,15 @@ import type { ProposalPdfData } from "./types";
  * Gera o PDF da proposta a partir do componente HTML branded.
  *
  * Estratégia: monta o `<ProposalPrintable />` num container off-screen,
- * espera o paint + carregamento de imagens (logo, fotos) e converte para
- * PDF A4 multi-página com html2pdf.js (html2canvas + jsPDF).
+ * espera o paint + carregamento de imagens (logo, fotos), renderiza cada
+ * página A4 com html2canvas-pro (suporta oklch/color-mix) e exporta com jsPDF.
  */
 export async function buildProposalBlob(data: ProposalPdfData): Promise<Blob> {
   if (typeof window === "undefined") throw new Error("PDF só pode ser gerado no navegador.");
-  const html2pdf = (await import("html2pdf.js")).default;
+  const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+    import("html2canvas-pro"),
+    import("jspdf"),
+  ]);
 
   const host = document.createElement("div");
   // Off-screen mas renderizável (html2canvas precisa de layout real).
@@ -23,8 +26,7 @@ export async function buildProposalBlob(data: ProposalPdfData): Promise<Blob> {
   host.style.background = "#FFFFFF";
   document.body.appendChild(host);
 
-  // html2canvas não suporta oklch (Tailwind v4). Isola o host de variáveis/herança
-  // do app, forçando cores em formato seguro (hex) dentro do printable.
+  // Isola o host de variáveis/herança do app, forçando cores em formato seguro (hex).
   const isolation = document.createElement("style");
   isolation.textContent = `
     .proposal-printable, .proposal-printable * {
@@ -39,7 +41,7 @@ export async function buildProposalBlob(data: ProposalPdfData): Promise<Blob> {
       --destructive: #DC2626; --destructive-foreground: #FFFFFF;
     }
   `;
-  host.appendChild(isolation);
+  document.head.appendChild(isolation);
 
   const root = createRoot(host);
   await new Promise<void>((resolve) => {
@@ -60,6 +62,7 @@ export async function buildProposalBlob(data: ProposalPdfData): Promise<Blob> {
           })
     )
   );
+  if (document.fonts?.ready) await document.fonts.ready;
 
   // Failsafe: sanitiza qualquer cor computada que ainda esteja em oklch().
   const props = ["color", "backgroundColor", "borderColor", "borderTopColor", "borderRightColor", "borderBottomColor", "borderLeftColor", "outlineColor", "fill", "stroke"] as const;
@@ -73,21 +76,27 @@ export async function buildProposalBlob(data: ProposalPdfData): Promise<Blob> {
   });
 
   try {
-    const blob: Blob = await html2pdf()
-      .from(host)
-      .set({
-        margin: 0,
-        filename: `proposta.pdf`,
-        image: { type: "jpeg", quality: 0.96 },
-        html2canvas: { scale: 2, useCORS: true, backgroundColor: "#FFFFFF", letterRendering: true, logging: false },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-        
-        pagebreak: { mode: ["css", "legacy"], avoid: [".pp-table", ".pp-pay-hero", ".pp-kpi", ".pp-fin-card"] },
-      } as any)
-      .outputPdf("blob");
+    const pages = Array.from(host.querySelectorAll<HTMLElement>(".pp-page"));
+    const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+
+    for (let i = 0; i < pages.length; i++) {
+      const canvas = await html2canvas(pages[i], {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#FFFFFF",
+        logging: false,
+        imageSmoothing: true,
+        imageSmoothingQuality: "high",
+      });
+      if (i > 0) pdf.addPage("a4", "portrait");
+      pdf.addImage(canvas.toDataURL("image/jpeg", 0.96), "JPEG", 0, 0, 210, 297, undefined, "FAST");
+    }
+
+    const blob = pdf.output("blob");
     return blob;
   } finally {
     root.unmount();
     host.remove();
+    isolation.remove();
   }
 }
