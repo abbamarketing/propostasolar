@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -395,7 +396,10 @@ export function useProposalAutosave({ proposalId, initialClientId }: { proposalI
       queryClient.setQueryData(["proposal", data.id], data);
       if (!proposalId) navigate({ to: "/propostas/$id/editar", params: { id: data.id }, replace: true });
     },
-    onError: () => setSaveState("error"),
+    onError: (error) => {
+      setSaveState("error");
+      toast.error(error instanceof Error ? error.message : "Não foi possível salvar a proposta.");
+    },
   });
 
   const draftJson = useMemo(() => JSON.stringify(draft), [draft]);
@@ -415,5 +419,9 @@ export function useProposalAutosave({ proposalId, initialClientId }: { proposalI
     mutation.mutate(draft);
   }
 
-  return { proposal: proposal.data, isLoading: proposal.isLoading, draft, setDraft, activeId, saveState, savedAt, hasUnsavedChanges, retry, isSaving: mutation.isPending };
+  async function saveNow() {
+    return mutation.mutateAsync(draft);
+  }
+
+  return { proposal: proposal.data, isLoading: proposal.isLoading, draft, setDraft, activeId, saveState, savedAt, hasUnsavedChanges, retry, saveNow, isSaving: mutation.isPending };
 }
