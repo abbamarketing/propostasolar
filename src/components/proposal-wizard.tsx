@@ -185,7 +185,7 @@ function SizingStep({ draft, client, updateDraft }: { draft: ProposalDraft; clie
   const qtdModules = draft.qtd_modulos ?? suggestedModules;
   const kwpInstalled = selectedModule && qtdModules > 0 ? (qtdModules * selectedModule.potencia_w) / 1000 : 0;
   const realGenerationMonthly = kwpInstalled > 0 ? kwpInstalled * hsp * 30 * pr : sizing.geracaoMensalKwh;
-  const compatibleInverters = (inverters.data ?? []).filter((inverter) => isCompatibleInverter(inverter, kwpInstalled, client?.tipo_ligacao));
+  const compatibleInverters = inverters.data ?? [];
   const inverterRatio = selectedInverter?.potencia_kw ? kwpInstalled / selectedInverter.potencia_kw : 1;
 
   useEffect(() => {
