@@ -630,6 +630,7 @@ export type Database = {
           validade_dias: number | null
           valido_ate: string | null
           valor_a_vista: number | null
+          valor_fechado_modo: boolean
           valor_total: number | null
           vendedor_id: string | null
         }
@@ -693,6 +694,7 @@ export type Database = {
           validade_dias?: number | null
           valido_ate?: string | null
           valor_a_vista?: number | null
+          valor_fechado_modo?: boolean
           valor_total?: number | null
           vendedor_id?: string | null
         }
@@ -756,6 +758,7 @@ export type Database = {
           validade_dias?: number | null
           valido_ate?: string | null
           valor_a_vista?: number | null
+          valor_fechado_modo?: boolean
           valor_total?: number | null
           vendedor_id?: string | null
         }

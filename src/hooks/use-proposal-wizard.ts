@@ -64,6 +64,7 @@ export type ProposalDraft = {
   garantia_instalacao_anos: number | null;
   prazo_execucao_dias_uteis: number | null;
   prazo_homologacao_dias: number | null;
+  valor_fechado_modo: boolean;
 };
 
 export const emptyDraft: ProposalDraft = {
@@ -116,6 +117,7 @@ export const emptyDraft: ProposalDraft = {
   garantia_instalacao_anos: 1,
   prazo_execucao_dias_uteis: 30,
   prazo_homologacao_dias: 90,
+  valor_fechado_modo: false,
 };
 
 async function getCompanyId() {
@@ -181,6 +183,7 @@ function toDraft(row?: ProposalRow | null, fallbackClientId = ""): ProposalDraft
     garantia_instalacao_anos: row.garantia_instalacao_anos ?? 1,
     prazo_execucao_dias_uteis: row.prazo_execucao_dias_uteis ?? 30,
     prazo_homologacao_dias: row.prazo_homologacao_dias ?? 90,
+    valor_fechado_modo: (row as { valor_fechado_modo?: boolean }).valor_fechado_modo ?? false,
   };
 }
 
