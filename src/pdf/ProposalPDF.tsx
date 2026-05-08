@@ -203,7 +203,16 @@ function calcEconomia25(anual: number, years = 25) { let total = 0; for (let i =
 function chunk<T>(rows: T[], size: number) { return Array.from({ length: Math.ceil(rows.length / size) }, (_, i) => rows.slice(i * size, i * size + size)); }
 
 const styles = StyleSheet.create({
-  page: { padding: 40, paddingBottom: 50, color: pdfStyles.colors.text, fontSize: 10, fontFamily: "Roboto" },
+  page: { padding: 30, paddingBottom: 42, color: pdfStyles.colors.text, fontSize: 9, fontFamily: "Roboto" },
+  twoCol: { flexDirection: "row", gap: 12, marginTop: 6 },
+  col: { flex: 1 },
+  subTitleSm: { fontSize: 10, fontWeight: 700, color: "#0F172A", marginTop: 10, marginBottom: 6 },
+  timelineCol: { gap: 4 },
+  timelineItemRow: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#F8FAFC", borderRadius: 6, paddingVertical: 5, paddingHorizontal: 8 },
+  timelineLabelRow: { fontSize: 9, color: "#0F172A", fontWeight: 500 },
+  validity: { fontSize: 8, color: "#64748B", marginTop: 8, fontStyle: "italic" },
+  obs: { fontSize: 8, color: "#475569", lineHeight: 1.5, marginTop: 10, padding: 8, backgroundColor: "#F8FAFC", borderRadius: 6 },
+  obsLabel: { fontWeight: 700, color: "#0F172A" },
 
   // COVER
   cover: { position: "relative", fontFamily: "Roboto" },
