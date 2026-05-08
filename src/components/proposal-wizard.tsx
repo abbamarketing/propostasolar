@@ -185,7 +185,7 @@ function SizingStep({ draft, client, updateDraft }: { draft: ProposalDraft; clie
   const qtdModules = draft.qtd_modulos ?? suggestedModules;
   const kwpInstalled = selectedModule && qtdModules > 0 ? (qtdModules * selectedModule.potencia_w) / 1000 : 0;
   const realGenerationMonthly = kwpInstalled > 0 ? kwpInstalled * hsp * 30 * pr : sizing.geracaoMensalKwh;
-  const compatibleInverters = (inverters.data ?? []).filter((inverter) => isCompatibleInverter(inverter, kwpInstalled, client?.tipo_ligacao));
+  const compatibleInverters = inverters.data ?? [];
   const inverterRatio = selectedInverter?.potencia_kw ? kwpInstalled / selectedInverter.potencia_kw : 1;
 
   useEffect(() => {
@@ -382,7 +382,12 @@ function money(value: number) { return new Intl.NumberFormat("pt-BR", { style: "
 function number(value: number, digits = 0) { return Number.isFinite(value) ? value.toLocaleString("pt-BR", { maximumFractionDigits: digits, minimumFractionDigits: digits }) : "0"; }
 function defaultAvailability(tipo?: string | null) { if (tipo === "trifasica") return 100; if (tipo === "bifasica") return 50; return 30; }
 function findTariff(tariffs: { concessionaria: string; uf: string; valor_kwh: number }[], concessionaria: string, uf: string) { return tariffs.find((tariff) => tariff.concessionaria.toLowerCase() === concessionaria.toLowerCase() && tariff.uf === uf) ?? tariffs.find((tariff) => tariff.uf === uf); }
-function isCompatibleInverter(inverter: InverterRow, kwp: number, tipo?: string | null) { const byPower = kwp <= 0 || (inverter.potencia_kw >= kwp * 0.7 && inverter.potencia_kw <= kwp * 1.3); const fases = (inverter.fases ?? "").toLowerCase(); const byPhase = tipo === "trifasica" ? fases.includes("tri") : tipo === "bifasica" ? fases.includes("bi") || fases.includes("mono") : fases.includes("mono") || !fases; return byPower && byPhase; }
+function isCompatibleInverter(inverter: InverterRow, kwp: number, tipo?: string | null) {
+  const fases = (inverter.fases ?? "").toLowerCase();
+  const hasPhaseMatch = tipo === "trifasica" ? fases.includes("tri") : tipo === "bifasica" ? fases.includes("bi") || fases.includes("mono") : fases.includes("mono") || !fases;
+  const hasPowerMatch = kwp <= 0 || (inverter.potencia_kw >= kwp * 0.5 && inverter.potencia_kw <= kwp * 1.6);
+  return !tipo || !fases || hasPhaseMatch || hasPowerMatch;
+}
 
 function CitySelect({ cities, value, onSelect }: { cities: CityRow[]; value: string; onSelect: (city: CityRow) => void }) { const [open, setOpen] = useState(false); return <Popover open={open} onOpenChange={setOpen}><PopoverTrigger asChild><Button variant="outline" className="justify-between"><span>{value === "/" ? "Cidade do projeto" : value}</span><ChevronsUpDown className="h-4 w-4 opacity-60" /></Button></PopoverTrigger><PopoverContent className="w-80 p-0"><Command><CommandInput placeholder="Buscar cidade" /><CommandList><CommandEmpty>Nenhuma cidade.</CommandEmpty><CommandGroup>{cities.map((city) => <CommandItem key={city.id} value={`${city.cidade} ${city.uf}`} onSelect={() => { onSelect(city); setOpen(false); }}>{city.cidade}/{city.uf}<span className="ml-auto text-xs text-muted-foreground">HSP {city.hsp_medio}</span></CommandItem>)}</CommandGroup></CommandList></Command></PopoverContent></Popover>; }
 function TariffField({ value, onChange }: { value: number; onChange: (value: number) => void }) { const form = useForm<{ tarifa: number }>({ resolver: zodResolver(z.object({ tarifa: z.number().min(0) })), values: { tarifa: value } }); return <Form {...form}><MoneyInput control={form.control} name="tarifa" label="Tarifa kWh" decimals={4} /><input type="hidden" value={value} onChange={() => undefined} />{form.watch("tarifa") !== value ? <SyncValue value={form.watch("tarifa")} onChange={onChange} /> : null}</Form>; }
