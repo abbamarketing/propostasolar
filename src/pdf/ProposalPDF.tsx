@@ -22,9 +22,8 @@ export function ProposalPDF({ data }: { data: ProposalPdfData }) {
   const { proposal, client, company, seller, items, financing, photos, cityIrradiance } = data;
   const fechado = Boolean(proposal.valor_fechado_modo);
   const showItems = !fechado;
-  // Pages: cover + intro + situacao + sistema + economia + pagar + (photos pages) + garantias + (obs?) + final
-  const photoPages = photos.length ? Math.ceil(photos.length / 4) : 0;
-  const totalPages = 8 + photoPages + (proposal.observacoes_comerciais ? 1 : 0);
+  // Layout fixo em 3 páginas: capa + visão geral + investimento/garantias
+  const totalPages = 3;
   let page = 2;
   const internal = (children: React.ReactNode) => <Page size="A4" style={styles.page}><PDFHeader companyData={company} />{children}<PDFFooter pageNumber={page++} totalPages={totalPages} companyData={company} /></Page>;
   const economia25 = calcEconomia25(proposal.economia_anual || 0);
