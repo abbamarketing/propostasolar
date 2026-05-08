@@ -52,8 +52,9 @@ export async function buildProposalBlob(data: ProposalPdfData): Promise<Blob> {
         image: { type: "jpeg", quality: 0.96 },
         html2canvas: { scale: 2, useCORS: true, backgroundColor: "#FFFFFF", letterRendering: true, logging: false },
         jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+        // @ts-expect-error pagebreak existe em runtime mas não está nos types
         pagebreak: { mode: ["css", "legacy"], avoid: [".pp-table", ".pp-pay-hero", ".pp-kpi", ".pp-fin-card"] },
-      })
+      } as any)
       .outputPdf("blob");
     return blob;
   } finally {
