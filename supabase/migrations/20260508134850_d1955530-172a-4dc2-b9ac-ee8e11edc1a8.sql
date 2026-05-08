@@ -1,0 +1,1 @@
+ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS valor_fechado_modo BOOLEAN NOT NULL DEFAULT false;
