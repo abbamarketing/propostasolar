@@ -247,9 +247,12 @@ function PricingStep({ proposalId, draft, client, updateDraft }: { proposalId?: 
     upsertItemsRef.current = upsertItems.mutate;
   }, [upsertItems.mutate]);
 
+  const fechado = Boolean(draft.valor_fechado_modo);
   useEffect(() => {
-    updateDraft({ custo_modulos: qtdModulos * moduleUnit, custo_inversor: qtdInversores * inverterUnit, custo_estrutura: structureCost, custo_cabos_protecoes: cableCost, custo_projeto_art: projectCost, custo_mao_obra: laborCost, custo_outros: pricing.custoOutros, custo_total: pricing.custoTotal, valor_total: pricing.valorFinal, valor_a_vista: pricing.valorFinal, economia_mensal: financial.economiaMensal, economia_anual: financial.economiaAnual, payback_anos: financial.paybackSimples, payback_descontado_anos: financial.paybackDescontado, co2_evitado_kg_ano: financial.co2EvitadoKgAno });
-  }, [cableCost, financial.co2EvitadoKgAno, financial.economiaAnual, financial.economiaMensal, financial.paybackDescontado, financial.paybackSimples, laborCost, moduleUnit, pricing.custoOutros, pricing.custoTotal, pricing.valorFinal, projectCost, qtdInversores, qtdModulos, inverterUnit, structureCost, updateDraft]);
+    const base = { custo_modulos: qtdModulos * moduleUnit, custo_inversor: qtdInversores * inverterUnit, custo_estrutura: structureCost, custo_cabos_protecoes: cableCost, custo_projeto_art: projectCost, custo_mao_obra: laborCost, custo_outros: pricing.custoOutros, custo_total: pricing.custoTotal, economia_mensal: financial.economiaMensal, economia_anual: financial.economiaAnual, payback_anos: financial.paybackSimples, payback_descontado_anos: financial.paybackDescontado, co2_evitado_kg_ano: financial.co2EvitadoKgAno };
+    if (fechado) updateDraft(base);
+    else updateDraft({ ...base, valor_total: pricing.valorFinal, valor_a_vista: pricing.valorFinal });
+  }, [fechado, cableCost, financial.co2EvitadoKgAno, financial.economiaAnual, financial.economiaMensal, financial.paybackDescontado, financial.paybackSimples, laborCost, moduleUnit, pricing.custoOutros, pricing.custoTotal, pricing.valorFinal, projectCost, qtdInversores, qtdModulos, inverterUnit, structureCost, updateDraft]);
 
   useEffect(() => {
     if (!proposalId) return;
