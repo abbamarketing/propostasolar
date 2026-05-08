@@ -117,6 +117,7 @@ export const emptyDraft: ProposalDraft = {
   garantia_instalacao_anos: 1,
   prazo_execucao_dias_uteis: 30,
   prazo_homologacao_dias: 90,
+  valor_fechado_modo: false,
 };
 
 async function getCompanyId() {
