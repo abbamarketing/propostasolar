@@ -61,6 +61,17 @@ export async function buildProposalBlob(data: ProposalPdfData): Promise<Blob> {
     )
   );
 
+  // Failsafe: sanitiza qualquer cor computada que ainda esteja em oklch().
+  const props = ["color", "backgroundColor", "borderColor", "borderTopColor", "borderRightColor", "borderBottomColor", "borderLeftColor", "outlineColor", "fill", "stroke"] as const;
+  const fallback: Record<string, string> = { color: "#0F172A", backgroundColor: "transparent", borderColor: "#E2E8F0", borderTopColor: "#E2E8F0", borderRightColor: "#E2E8F0", borderBottomColor: "#E2E8F0", borderLeftColor: "#E2E8F0", outlineColor: "#E2E8F0", fill: "#0F172A", stroke: "#0F172A" };
+  host.querySelectorAll<HTMLElement>("*").forEach((el) => {
+    const cs = getComputedStyle(el);
+    for (const p of props) {
+      const v = cs[p as any] as string;
+      if (v && v.includes("oklch")) (el.style as any)[p] = fallback[p];
+    }
+  });
+
   try {
     const blob: Blob = await html2pdf()
       .from(host)
