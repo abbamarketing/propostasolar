@@ -100,146 +100,91 @@ export function ProposalPDF({ data }: { data: ProposalPdfData }) {
       </View>
     </Page>
 
-    {/* PAGE 2: Compromisso */}
+    {/* PAGE 2: Visão geral — situação, sistema e economia */}
     {internal(<>
-      <SectionTitle>{`Por que escolher a ${company?.nome_fantasia || "ENERGIZA SOLAR"}`}</SectionTitle>
-      <Text style={styles.lead}>Preparamos esta proposta especialmente para {client?.nome || "você"}, com foco em qualidade, durabilidade e previsibilidade financeira.</Text>
-      <Text style={styles.p}>Trabalhamos com equipamentos certificados pelo INMETRO, dimensionados para o seu perfil de consumo e instalados por equipe especializada. A entrega inclui acompanhamento técnico, homologação junto à concessionária e suporte pós-instalação para que o sistema opere com segurança por décadas.</Text>
-      <View style={styles.iconRow}>
-        <KpiBox label="Geração" value="25 anos" subtitle="garantida" />
-        <KpiBox label="Equipe" value="Certificada" subtitle="instalação própria" />
-        <KpiBox label="Suporte" value="Pós-venda" subtitle="dedicado" />
-        <KpiBox label="Homologação" value="Assistida" subtitle="ponta a ponta" />
-      </View>
-    </>)}
+      <SectionTitle>Sua proposta de energia solar</SectionTitle>
+      <Text style={styles.lead}>Olá {client?.nome?.split(" ")[0] || "cliente"}, este é o sistema fotovoltaico dimensionado para o seu consumo, com economia projetada para os próximos 25 anos.</Text>
 
-    {/* PAGE 3: Situação atual */}
-    {internal(<>
-      <SectionTitle>Sua situação atual de energia</SectionTitle>
-      <View style={styles.infoGrid}>
-        <InfoRow label="Conta de luz média" value={money(client?.conta_luz_media || 0)} />
-        <InfoRow label="Consumo estimado" value={`${num(proposal.consumo_estimado_kwh)} kWh/mês`} />
-        <InfoRow label="Concessionária" value={client?.concessionaria || "—"} />
-        <InfoRow label="Tipo de ligação" value={client?.tipo_ligacao || "—"} />
-        <InfoRow label="Tarifa atual" value={`${money(proposal.tarifa_kwh || 0)}/kWh`} />
-      </View>
-      <Text style={styles.p}>Mantendo o consumo atual e considerando reajustes médios de 8% ao ano, em 25 anos você gastaria mais de:</Text>
-      <View style={styles.warningCard}>
-        <Text style={styles.warningLabel}>Sem energia solar</Text>
-        <Text style={styles.warningValue}>{money(economia25)}</Text>
-        <Text style={styles.warningSub}>em contas de luz nos próximos 25 anos</Text>
-      </View>
-    </>)}
-
-    {/* PAGE 4: Sistema dimensionado */}
-    {internal(<>
-      <SectionTitle>O sistema dimensionado para você</SectionTitle>
       <View style={styles.iconRow}>
-        <KpiBox label="Potência instalada" value={`${num(proposal.kwp_instalado, 2)} kWp`} />
-        <KpiBox label="Geração estimada" value={`${num(proposal.geracao_estimada_mensal)} kWh/mês`} />
-        <KpiBox label="CO₂ evitado" value={`${num(proposal.co2_evitado_kg_ano)} kg/ano`} subtitle={`~ ${num((proposal.co2_evitado_kg_ano || 0) / 22)} árvores`} />
+        <KpiBox label="Potência" value={`${num(proposal.kwp_instalado, 2)} kWp`} />
+        <KpiBox label="Geração" value={`${num(proposal.geracao_estimada_mensal)} kWh/mês`} />
+        <KpiBox label="Economia/mês" value={money(proposal.economia_mensal || 0)} />
+        <KpiBox label="Payback" value={`${num(proposal.payback_anos, 1)} anos`} />
       </View>
-      <Text style={styles.subTitle}>Escopo do fornecimento</Text>
-      <DataTable columns={["Item", "Quantidade"]} rows={escopoRows} />
-      <Text style={styles.subTitle}>Geração mensal estimada (kWh)</Text>
+
+      <View style={styles.twoCol}>
+        <View style={styles.col}>
+          <Text style={styles.subTitleSm}>Situação atual</Text>
+          <View style={styles.infoGrid}>
+            <InfoRow label="Conta de luz" value={money(client?.conta_luz_media || 0)} />
+            <InfoRow label="Consumo" value={`${num(proposal.consumo_estimado_kwh)} kWh/mês`} />
+            <InfoRow label="Tarifa" value={`${money(proposal.tarifa_kwh || 0)}/kWh`} />
+            <InfoRow label="Concessionária" value={client?.concessionaria || "—"} />
+          </View>
+        </View>
+        <View style={styles.col}>
+          <Text style={styles.subTitleSm}>Escopo do fornecimento</Text>
+          <View style={styles.includedList}>
+            {escopoRows.slice(0, 6).map(([label]) => <Text key={label} style={styles.includedItem}>• {label}</Text>)}
+          </View>
+        </View>
+      </View>
+
+      <Text style={styles.subTitleSm}>Geração mensal estimada (kWh)</Text>
       <BarChart values={monthly} max={chartMax} />
     </>)}
 
-    {/* PAGE 5: Economia */}
+    {/* PAGE 3: Investimento, garantias e aceite */}
     {internal(<>
-      <SectionTitle>Quanto você vai economizar</SectionTitle>
-      <View style={styles.heroCard}>
-        <Text style={styles.heroLabel}>Economia estimada em 25 anos</Text>
-        <Text style={styles.heroValue}>{money(economia25)}</Text>
-      </View>
-      <DataTable columns={["Indicador", "Valor"]} rows={[
-        ["Economia mensal", money(proposal.economia_mensal || 0)],
-        ["Economia anual", money(proposal.economia_anual || 0)],
-        ["Payback simples", `${num(proposal.payback_anos, 1)} anos`],
-        ["Payback descontado", `${num(proposal.payback_descontado_anos, 1)} anos`],
-      ]} />
-      <Text style={styles.subTitle}>Investimento × economia acumulada (25 anos)</Text>
-      <AreaChart values={accumulated} investment={proposal.valor_total || 0} />
-      <Text style={styles.p}>A partir do {num(proposal.payback_anos, 1)}º ano, todo o sistema passa a gerar economia líquida.</Text>
-    </>)}
+      <SectionTitle>Investimento e condições</SectionTitle>
 
-    {/* PAGE 6: Pagamento */}
-    {internal(<>
-      <SectionTitle>Como pagar</SectionTitle>
       <View style={styles.payHero}>
         <Text style={styles.payHeroLabel}>Investimento total à vista</Text>
         <Text style={styles.payHeroValue}>{money(proposal.valor_total || 0)}</Text>
-        <Text style={styles.payHeroSub}>Maior economia, sem juros</Text>
+        <Text style={styles.payHeroSub}>Economia em 25 anos: {money(economia25)}</Text>
       </View>
 
       {showItems ? <>
-        <Text style={styles.subTitle}>Composição do investimento</Text>
-        <DataTable columns={["Item", "Quantidade", "Valor"]} rows={itemRows} />
-      </> : <>
-        <Text style={styles.subTitle}>O que está incluso</Text>
-        <View style={styles.includedList}>
-          {escopoRows.map(([label]) => <Text key={label} style={styles.includedItem}>• {label}</Text>)}
-        </View>
-      </>}
+        <Text style={styles.subTitleSm}>Composição do investimento</Text>
+        <DataTable columns={["Item", "Qtd", "Valor"]} rows={itemRows} />
+      </> : null}
 
       {financing.length ? <>
-        <Text style={styles.subTitle}>Opções de financiamento</Text>
+        <Text style={styles.subTitleSm}>Opções de financiamento</Text>
         <View style={styles.grid}>
-          {financing.map((f) => <View key={f.id} style={styles.financeCard}>
+          {financing.slice(0, 4).map((f) => <View key={f.id} style={styles.financeCard}>
             <Text style={styles.financeBank}>{f.banco}</Text>
-            <Text style={styles.financeValue}>{f.prazo_meses}x de {money(f.valor_parcela || 0)}</Text>
+            <Text style={styles.financeValue}>{f.prazo_meses}x {money(f.valor_parcela || 0)}</Text>
             <Text style={styles.financeSub}>Total: {money(((f.valor_parcela || 0) * (f.prazo_meses || 0)) + (f.entrada || 0))}</Text>
           </View>)}
         </View>
-        <Disclaimer>Simulação. Taxa final sujeita a análise de crédito do banco.</Disclaimer>
       </> : null}
-    </>)}
 
-    {/* Photos */}
-    {photos.length ? chunk(photos, 4).map((group, idx) => internal(<>
-      <SectionTitle>Nossa qualidade comprovada</SectionTitle>
-      <View style={styles.photoGrid}>{group.map((photo) => <View key={photo.id} style={styles.photoBox}><Image src={photo.url} style={styles.photo} /><Text style={styles.caption}>{photo.legenda || "Projeto similar"}</Text></View>)}</View>
-    </>)) : null}
-
-    {/* Garantias */}
-    {internal(<>
-      <SectionTitle>Garantias e prazos</SectionTitle>
-      <DataTable columns={["Item", "Prazo / Garantia"]} rows={[
-        ["Módulo solar", `${proposal.garantia_modulo_anos || 25} anos de geração`],
-        ["Inversor", `${proposal.garantia_inversor_anos || 10} anos`],
-        ["Instalação", `${proposal.garantia_instalacao_anos || 1} ano`],
-        ["Execução da obra", `${proposal.prazo_execucao_dias_uteis || 30} dias úteis`],
-        ["Homologação", `Até ${proposal.prazo_homologacao_dias || 90} dias`],
-      ]} />
-      <Text style={styles.subTitle}>Etapas do projeto</Text>
-      <View style={styles.timeline}>
-        {["Pagamento", "Projeto", "Instalação", "Homologação", "Operando"].map((item, i) => <View key={item} style={styles.timelineItem}><Text style={styles.timelineNum}>{i + 1}</Text><Text style={styles.timelineLabel}>{item}</Text></View>)}
+      <View style={styles.twoCol}>
+        <View style={styles.col}>
+          <Text style={styles.subTitleSm}>Garantias e prazos</Text>
+          <View style={styles.infoGrid}>
+            <InfoRow label="Módulos" value={`${proposal.garantia_modulo_anos || 25} anos`} />
+            <InfoRow label="Inversor" value={`${proposal.garantia_inversor_anos || 10} anos`} />
+            <InfoRow label="Instalação" value={`${proposal.garantia_instalacao_anos || 1} ano`} />
+            <InfoRow label="Execução" value={`${proposal.prazo_execucao_dias_uteis || 30} dias úteis`} />
+            <InfoRow label="Homologação" value={`Até ${proposal.prazo_homologacao_dias || 90} dias`} />
+          </View>
+        </View>
+        <View style={styles.col}>
+          <Text style={styles.subTitleSm}>Etapas do projeto</Text>
+          <View style={styles.timelineCol}>
+            {["Pagamento", "Projeto", "Instalação", "Homologação", "Operando"].map((item, i) => <View key={item} style={styles.timelineItemRow}><Text style={styles.timelineNum}>{i + 1}</Text><Text style={styles.timelineLabelRow}>{item}</Text></View>)}
+          </View>
+          <Text style={styles.validity}>Proposta válida até {shortDate(proposal.valido_ate)}</Text>
+        </View>
       </View>
-    </>)}
 
-    {/* Observações */}
-    {proposal.observacoes_comerciais ? internal(<>
-      <SectionTitle>Observações comerciais</SectionTitle>
-      <Text style={styles.p}>{String(proposal.observacoes_comerciais).replace(/[*#_]/g, "")}</Text>
-    </>) : null}
+      {proposal.observacoes_comerciais ? <Text style={styles.obs}><Text style={styles.obsLabel}>Observações: </Text>{String(proposal.observacoes_comerciais).replace(/[*#_]/g, "").slice(0, 280)}</Text> : null}
 
-    {/* Encerramento */}
-    {internal(<>
-      <SectionTitle>Pronto para começar?</SectionTitle>
-      <View style={styles.heroCard}>
-        <Text style={styles.heroLabel}>Esta proposta é válida até</Text>
-        <Text style={styles.heroValue}>{shortDate(proposal.valido_ate)}</Text>
-        <Text style={styles.heroSub}>Após esta data os valores podem sofrer alteração</Text>
-      </View>
-      <Text style={styles.p}>Estamos prontos para iniciar o projeto. Entre em contato com seu consultor para confirmar a aceitação da proposta.</Text>
       <View style={styles.signatureRow}>
         <View style={styles.signatureBox}><Text style={styles.signatureLine}>_______________________________</Text><Text style={styles.signatureLabel}>{client?.nome || "Cliente"}</Text></View>
         <View style={styles.signatureBox}><Text style={styles.signatureLine}>_______________________________</Text><Text style={styles.signatureLabel}>{company?.nome_fantasia || "Energiza Solar"}</Text></View>
-      </View>
-      <View style={styles.companyFooter}>
-        <Text style={styles.companyName}>{company?.razao_social || company?.nome_fantasia || "ENERGIZA SOLAR LTDA"}</Text>
-        <Text style={styles.companyMeta}>{company?.cnpj ? `CNPJ: ${company.cnpj}` : ""}{company?.endereco_logradouro ? ` · ${company.endereco_logradouro}, ${company.endereco_numero || ""} — ${company.endereco_cidade || ""}/${company.endereco_uf || ""}` : ""}</Text>
-        <Text style={styles.companyMeta}>{company?.email || ""}{company?.telefone ? ` · ${company.telefone}` : ""}</Text>
       </View>
     </>)}
   </Document>;
