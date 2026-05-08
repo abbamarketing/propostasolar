@@ -8,9 +8,12 @@ import { type ProposalPdfData } from "./types";
 Font.register({
   family: "Roboto",
   fonts: [
-    { src: "/fonts/Roboto-Regular.ttf", fontWeight: 400 },
-    { src: "/fonts/Roboto-Medium.ttf", fontWeight: 500 },
-    { src: "/fonts/Roboto-Bold.ttf", fontWeight: 700 },
+    { src: "/fonts/Roboto-Regular.ttf", fontWeight: 400, fontStyle: "normal" },
+    { src: "/fonts/Roboto-Regular.ttf", fontWeight: 400, fontStyle: "italic" },
+    { src: "/fonts/Roboto-Medium.ttf", fontWeight: 500, fontStyle: "normal" },
+    { src: "/fonts/Roboto-Medium.ttf", fontWeight: 500, fontStyle: "italic" },
+    { src: "/fonts/Roboto-Bold.ttf", fontWeight: 700, fontStyle: "normal" },
+    { src: "/fonts/Roboto-Bold.ttf", fontWeight: 700, fontStyle: "italic" },
   ],
 });
 Font.registerHyphenationCallback((word) => [word]);
