@@ -1,7 +1,7 @@
 import { Document, Font, Image, LinearGradient, Page, Path, Rect, Stop, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
 import type React from "react";
 import { DataTable, Disclaimer, KpiBox, PDFFooter, PDFHeader, SectionTitle, pdfStyles } from "./components/PDFKit";
-import { templateNames, type ProposalPdfData } from "./types";
+import { type ProposalPdfData } from "./types";
 
 // Register a real TTF font so bold rendering doesn't break with default Helvetica.
 // Files served from /public/fonts (same origin as the app).
