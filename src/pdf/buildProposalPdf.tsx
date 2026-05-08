@@ -50,7 +50,7 @@ export async function buildProposalBlob(data: ProposalPdfData): Promise<Blob> {
         filename: `proposta-energiza-${data.proposal.numero || "sem-numero"}.pdf`,
         image: { type: "jpeg", quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, letterRendering: true, logging: false, backgroundColor: "#FFFFFF" },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait", compress: true },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
         pagebreak: { mode: ["css", "legacy"] },
       })
       .outputPdf("blob");
