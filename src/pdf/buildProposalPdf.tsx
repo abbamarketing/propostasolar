@@ -23,6 +23,24 @@ export async function buildProposalBlob(data: ProposalPdfData): Promise<Blob> {
   host.style.background = "#FFFFFF";
   document.body.appendChild(host);
 
+  // html2canvas não suporta oklch (Tailwind v4). Isola o host de variáveis/herança
+  // do app, forçando cores em formato seguro (hex) dentro do printable.
+  const isolation = document.createElement("style");
+  isolation.textContent = `
+    .proposal-printable, .proposal-printable * {
+      --background: #FFFFFF; --foreground: #0F172A;
+      --primary: #16A34A; --primary-foreground: #FFFFFF;
+      --secondary: #F1F5F9; --secondary-foreground: #0F172A;
+      --muted: #F1F5F9; --muted-foreground: #475569;
+      --accent: #FBBF24; --accent-foreground: #0F172A;
+      --border: #E2E8F0; --input: #E2E8F0; --ring: #16A34A;
+      --card: #FFFFFF; --card-foreground: #0F172A;
+      --popover: #FFFFFF; --popover-foreground: #0F172A;
+      --destructive: #DC2626; --destructive-foreground: #FFFFFF;
+    }
+  `;
+  host.appendChild(isolation);
+
   const root = createRoot(host);
   await new Promise<void>((resolve) => {
     root.render(<ProposalPrintable data={data} />);
