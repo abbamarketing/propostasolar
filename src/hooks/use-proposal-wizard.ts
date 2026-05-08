@@ -399,13 +399,17 @@ export function useProposalAutosave({ proposalId, initialClientId }: { proposalI
   });
 
   const draftJson = useMemo(() => JSON.stringify(draft), [draft]);
+  const mutateRef = useRef(mutation.mutate);
+  useEffect(() => {
+    mutateRef.current = mutation.mutate;
+  }, [mutation.mutate]);
 
   useEffect(() => {
     if (draftJson === lastSavedJson.current || !draft.client_id) return;
     setHasUnsavedChanges(true);
-    const timer = window.setTimeout(() => mutation.mutate(draft), 1000);
+    const timer = window.setTimeout(() => mutateRef.current(draft), 1000);
     return () => window.clearTimeout(timer);
-  }, [draft, draft.client_id, draftJson, mutation]);
+  }, [draft, draftJson]);
 
   function retry() {
     mutation.mutate(draft);
