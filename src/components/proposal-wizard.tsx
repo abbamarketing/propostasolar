@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useBlocker, useNavigate } from "@tanstack/react-router";
 import { BatteryCharging, Building2, Check, ChevronsUpDown, CircleAlert, CircleHelp, Clock, Copy, Download, ExternalLink, FileText, GripVertical, Home, ImageIcon, Loader2, LogOut, Plus, RefreshCcw, Save, Search, Tractor, Trash2, Upload, Warehouse } from "lucide-react";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { ClientForm, type ClientFormValues } from "@/components/client-form";
@@ -73,14 +73,19 @@ export function ProposalWizard({ proposalId, initialClientId }: ProposalWizardPr
     return false;
   }
 
-  function next() {
+  async function next() {
     const result = step === 0 ? stepOneSchema.safeParse({ client_id: autosave.draft.client_id }) : step === 1 ? stepTwoSchema.safeParse({ modulo_id: autosave.draft.modulo_id, inversor_id: autosave.draft.inversor_id, kwp_instalado: autosave.draft.kwp_instalado ?? 0 }) : step === 2 ? stepThreeSchema.safeParse({ valor_total: autosave.draft.valor_total ?? 0 }) : stepFourSchema.safeParse({ template: autosave.draft.template ?? "on-grid-residencial" });
     if (!result.success) {
       setValidationMessage(result.error.issues[0]?.message ?? "Preencha os campos obrigatórios.");
       return;
     }
     setValidationMessage("");
-    setStep((current) => Math.min(current + 1, 4));
+    try {
+      await autosave.saveNow();
+      setStep((current) => Math.min(current + 1, 4));
+    } catch (error) {
+      setValidationMessage(error instanceof Error ? error.message : "Não foi possível salvar a proposta antes de avançar.");
+    }
   }
 
   function back() {
@@ -213,6 +218,7 @@ function PricingStep({ proposalId, draft, client, updateDraft }: { proposalId?: 
   const updateFinancing = useUpdateFinancingOption();
   const deleteFinancing = useDeleteFinancingOption();
   const upsertItems = useUpsertProposalItems();
+  const upsertItemsRef = useRef(upsertItems.mutate);
   const [manualStructure, setManualStructure] = useState(Boolean(draft.custo_estrutura));
   const [laborMode, setLaborMode] = useState<"wp" | "fixo">("wp");
   const [laborWp, setLaborWp] = useState(0.8);
@@ -238,15 +244,19 @@ function PricingStep({ proposalId, draft, client, updateDraft }: { proposalId?: 
   const financial = calculateFinancialAnalysis({ valorInvestimento: pricing.valorFinal, geracaoMensalKwh: draft.geracao_estimada_mensal ?? 0, tarifaKwh: draft.tarifa_kwh ?? 0, custoDisponibilidadeKwh: draft.custo_disponibilidade_kwh ?? 0, reajusteTarifaAnualPct: 0.08, taxaDescontoAnualPct: 0.1, vidaUtilAnos: 25 });
 
   useEffect(() => {
+    upsertItemsRef.current = upsertItems.mutate;
+  }, [upsertItems.mutate]);
+
+  useEffect(() => {
     updateDraft({ custo_modulos: qtdModulos * moduleUnit, custo_inversor: qtdInversores * inverterUnit, custo_estrutura: structureCost, custo_cabos_protecoes: cableCost, custo_projeto_art: projectCost, custo_mao_obra: laborCost, custo_outros: pricing.custoOutros, custo_total: pricing.custoTotal, valor_total: pricing.valorFinal, valor_a_vista: pricing.valorFinal, economia_mensal: financial.economiaMensal, economia_anual: financial.economiaAnual, payback_anos: financial.paybackSimples, payback_descontado_anos: financial.paybackDescontado, co2_evitado_kg_ano: financial.co2EvitadoKgAno });
   }, [cableCost, financial.co2EvitadoKgAno, financial.economiaAnual, financial.economiaMensal, financial.paybackDescontado, financial.paybackSimples, laborCost, moduleUnit, pricing.custoOutros, pricing.custoTotal, pricing.valorFinal, projectCost, qtdInversores, qtdModulos, inverterUnit, structureCost, updateDraft]);
 
   useEffect(() => {
     if (!proposalId) return;
     const items = buildProposalItems({ draft, client, module, inverter, qtdModulos, qtdInversores, moduleUnit, inverterUnit, structureCost, cableCost, projectCost, laborCost, otherCosts });
-    const timer = window.setTimeout(() => upsertItems.mutate({ proposalId, items }), 1200);
+    const timer = window.setTimeout(() => upsertItemsRef.current({ proposalId, items }), 1200);
     return () => window.clearTimeout(timer);
-  }, [proposalId, draft.modulo_modelo, draft.inversor_modelo, client?.tipo_telhado, module?.marca, inverter?.marca, qtdModulos, qtdInversores, moduleUnit, inverterUnit, structureCost, cableCost, projectCost, laborCost, otherCosts, upsertItems]);
+  }, [proposalId, draft.modulo_modelo, draft.inversor_modelo, client?.tipo_telhado, module?.marca, inverter?.marca, qtdModulos, qtdInversores, moduleUnit, inverterUnit, structureCost, cableCost, projectCost, laborCost, otherCosts]);
 
   async function insertDefaultFinancing() {
     if (!proposalId) return;
