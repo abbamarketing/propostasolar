@@ -23,6 +23,24 @@ export async function buildProposalBlob(data: ProposalPdfData): Promise<Blob> {
   host.style.background = "#FFFFFF";
   document.body.appendChild(host);
 
+  // html2canvas não suporta oklch (Tailwind v4). Isola o host de variáveis/herança
+  // do app, forçando cores em formato seguro (hex) dentro do printable.
+  const isolation = document.createElement("style");
+  isolation.textContent = `
+    .proposal-printable, .proposal-printable * {
+      --background: #FFFFFF; --foreground: #0F172A;
+      --primary: #16A34A; --primary-foreground: #FFFFFF;
+      --secondary: #F1F5F9; --secondary-foreground: #0F172A;
+      --muted: #F1F5F9; --muted-foreground: #475569;
+      --accent: #FBBF24; --accent-foreground: #0F172A;
+      --border: #E2E8F0; --input: #E2E8F0; --ring: #16A34A;
+      --card: #FFFFFF; --card-foreground: #0F172A;
+      --popover: #FFFFFF; --popover-foreground: #0F172A;
+      --destructive: #DC2626; --destructive-foreground: #FFFFFF;
+    }
+  `;
+  host.appendChild(isolation);
+
   const root = createRoot(host);
   await new Promise<void>((resolve) => {
     root.render(<ProposalPrintable data={data} />);
@@ -42,6 +60,17 @@ export async function buildProposalBlob(data: ProposalPdfData): Promise<Blob> {
           })
     )
   );
+
+  // Failsafe: sanitiza qualquer cor computada que ainda esteja em oklch().
+  const props = ["color", "backgroundColor", "borderColor", "borderTopColor", "borderRightColor", "borderBottomColor", "borderLeftColor", "outlineColor", "fill", "stroke"] as const;
+  const fallback: Record<string, string> = { color: "#0F172A", backgroundColor: "transparent", borderColor: "#E2E8F0", borderTopColor: "#E2E8F0", borderRightColor: "#E2E8F0", borderBottomColor: "#E2E8F0", borderLeftColor: "#E2E8F0", outlineColor: "#E2E8F0", fill: "#0F172A", stroke: "#0F172A" };
+  host.querySelectorAll<HTMLElement>("*").forEach((el) => {
+    const cs = getComputedStyle(el);
+    for (const p of props) {
+      const v = cs[p as any] as string;
+      if (v && v.includes("oklch")) (el.style as any)[p] = fallback[p];
+    }
+  });
 
   try {
     const blob: Blob = await html2pdf()
