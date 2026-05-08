@@ -103,7 +103,7 @@ export function ProposalPDF({ data }: { data: ProposalPdfData }) {
 
     {/* PAGE 2: Compromisso */}
     {internal(<>
-      <SectionTitle>Por que escolher a {company?.nome_fantasia || "ENERGIZA SOLAR"}</SectionTitle>
+      <SectionTitle>{`Por que escolher a ${company?.nome_fantasia || "ENERGIZA SOLAR"}`}</SectionTitle>
       <Text style={styles.lead}>Preparamos esta proposta especialmente para {client?.nome || "você"}, com foco em qualidade, durabilidade e previsibilidade financeira.</Text>
       <Text style={styles.p}>Trabalhamos com equipamentos certificados pelo INMETRO, dimensionados para o seu perfil de consumo e instalados por equipe especializada. A entrega inclui acompanhamento técnico, homologação junto à concessionária e suporte pós-instalação para que o sistema opere com segurança por décadas.</Text>
       <View style={styles.iconRow}>
