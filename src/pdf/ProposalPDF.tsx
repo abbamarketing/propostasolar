@@ -1,12 +1,7 @@
-import { Document, Font, Image, LinearGradient, Page, Path, Rect, Stop, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
+import { Document, Image, LinearGradient, Page, Path, Rect, Stop, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
 import type React from "react";
 import { DataTable, Disclaimer, KpiBox, PDFFooter, PDFHeader, SectionTitle, pdfStyles } from "./components/PDFKit";
 import { templateNames, type ProposalPdfData } from "./types";
-
-Font.register({
-  family: "Inter",
-  fonts: [400, 500, 600, 700].map((fontWeight) => ({ src: "https://fonts.gstatic.com/s/inter/v13/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa1ZL7.ttf", fontWeight })),
-});
 
 const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 const monthKeys = ["hsp_jan", "hsp_fev", "hsp_mar", "hsp_abr", "hsp_mai", "hsp_jun", "hsp_jul", "hsp_ago", "hsp_set", "hsp_out", "hsp_nov", "hsp_dez"];
