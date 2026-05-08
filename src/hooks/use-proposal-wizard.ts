@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -352,7 +351,6 @@ export function useProposalContext(proposal?: Pick<ProposalRow, "company_id" | "
 }
 
 export function useProposalAutosave({ proposalId, initialClientId }: { proposalId?: string; initialClientId?: string }) {
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const proposal = useProposal(proposalId);
   const [draft, setDraft] = useState<ProposalDraft>(() => ({ ...emptyDraft, client_id: initialClientId ?? "" }));
@@ -400,7 +398,6 @@ export function useProposalAutosave({ proposalId, initialClientId }: { proposalI
       const json = JSON.stringify(toDraft(data));
       lastSavedJson.current = json;
       queryClient.setQueryData(["proposal", data.id], data);
-      if (!proposalId) navigate({ to: "/propostas/$id/editar", params: { id: data.id }, replace: true });
     },
     onError: (error) => {
       setSaveState("error");
