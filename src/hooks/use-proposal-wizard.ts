@@ -185,8 +185,14 @@ function toDraft(row?: ProposalRow | null, fallbackClientId = ""): ProposalDraft
   };
 }
 
+function nullableText(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
 function toPayload(draft: ProposalDraft): ProposalUpdate {
-  return { ...draft, garantia_instalacao_anos: draft.garantia_instalacao_anos ?? 1, prazo_execucao_dias_uteis: draft.prazo_execucao_dias_uteis ?? 30, prazo_homologacao_dias: draft.prazo_homologacao_dias ?? 90, status: "rascunho" };
+  const ufProjeto = nullableText(draft.uf_projeto)?.toUpperCase() ?? null;
+  return { ...draft, cidade_projeto: nullableText(draft.cidade_projeto), uf_projeto: ufProjeto?.length === 2 ? ufProjeto : null, garantia_instalacao_anos: draft.garantia_instalacao_anos ?? 1, prazo_execucao_dias_uteis: draft.prazo_execucao_dias_uteis ?? 30, prazo_homologacao_dias: draft.prazo_homologacao_dias ?? 90, status: "rascunho" };
 }
 
 export function useProposal(proposalId?: string) {
