@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
   timelineCol: { gap: 4 },
   timelineItemRow: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#F8FAFC", borderRadius: 6, paddingVertical: 5, paddingHorizontal: 8 },
   timelineLabelRow: { fontSize: 9, color: "#0F172A", fontWeight: 500 },
-  validity: { fontSize: 8, color: "#64748B", marginTop: 8, fontStyle: "italic" },
+  validity: { fontSize: 8, color: "#64748B", marginTop: 8 },
   obs: { fontSize: 8, color: "#475569", lineHeight: 1.5, marginTop: 10, padding: 8, backgroundColor: "#F8FAFC", borderRadius: 6 },
   obsLabel: { fontWeight: 700, color: "#0F172A" },
 
