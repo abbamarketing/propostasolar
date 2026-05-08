@@ -3,7 +3,7 @@ import logoUrl from "@/assets/energiza-solar-logo.png";
 
 /**
  * Componente HTML imprimível (A4). Usado tanto para preview no app
- * quanto para gerar PDF via html2pdf (canvas → jsPDF).
+ * quanto para gerar PDF via captura HTML (canvas → jsPDF).
  *
  * Padrão de design fixo (3 páginas):
  *   1) Capa branded (verde Energiza + accent amarelo)
