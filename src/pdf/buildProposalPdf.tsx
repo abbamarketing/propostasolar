@@ -43,17 +43,15 @@ export async function buildProposalBlob(data: ProposalPdfData): Promise<Blob> {
   if (!target) throw new Error("Conteúdo da proposta não encontrado.");
 
   try {
-    const blob: Blob = await html2pdf()
-      .from(target)
-      .set({
-        margin: 0,
-        filename: `proposta-energiza-${data.proposal.numero || "sem-numero"}.pdf`,
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, letterRendering: true, logging: false, backgroundColor: "#FFFFFF" },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-        pagebreak: { mode: ["css", "legacy"] },
-      })
-      .outputPdf("blob");
+    const opt: any = {
+      margin: 0,
+      filename: `proposta-energiza-${data.proposal.numero || "sem-numero"}.pdf`,
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, letterRendering: true, logging: false, backgroundColor: "#FFFFFF" },
+      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      pagebreak: { mode: ["css", "legacy"] },
+    };
+    const blob: Blob = await html2pdf().from(target).set(opt).outputPdf("blob");
     return blob;
   } finally {
     root.unmount();
