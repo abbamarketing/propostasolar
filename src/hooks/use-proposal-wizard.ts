@@ -64,6 +64,7 @@ export type ProposalDraft = {
   garantia_instalacao_anos: number | null;
   prazo_execucao_dias_uteis: number | null;
   prazo_homologacao_dias: number | null;
+  valor_fechado_modo: boolean;
 };
 
 export const emptyDraft: ProposalDraft = {
