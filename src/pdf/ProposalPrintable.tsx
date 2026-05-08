@@ -2,497 +2,487 @@ import type { ProposalPdfData } from "./types";
 import logoUrl from "@/assets/energiza-solar-logo.png";
 
 /**
- * Componente HTML imprimível (A4). Usado tanto para preview no app
- * quanto para gerar PDF via captura HTML (canvas → jsPDF).
- *
- * Padrão de design fixo (3 páginas):
- *   1) Capa branded (verde Energiza + accent amarelo)
- *   2) Visão geral (sistema, situação, geração mensal, escopo)
- *   3) Investimento, garantias, financiamento e aceite
- *
- * Branding: logo Energiza Solar, paleta #15803D / #16A34A / #FBBF24
- * sobre fundo navy #0F172A. Tipografia: Inter (sans).
+ * Proposta comercial Energiza Solar — 4 páginas A4.
+ * Tipografia + hierarquia, sem ícones decorativos, sem zebra, sem badges.
  */
-
-const COLORS = {
-  green: "#16A34A",
-  greenDark: "#15803D",
-  greenSoft: "#DCFCE7",
-  navy: "#0F172A",
-  slate: "#475569",
-  slateSoft: "#F1F5F9",
-  border: "#E2E8F0",
-  yellow: "#FBBF24",
-  white: "#FFFFFF",
-};
-
-const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-const monthKeys = ["hsp_jan", "hsp_fev", "hsp_mar", "hsp_abr", "hsp_mai", "hsp_jun", "hsp_jul", "hsp_ago", "hsp_set", "hsp_out", "hsp_nov", "hsp_dez"];
 
 const money = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(v) || 0);
 const num = (v: number, d = 0) => (Number(v) || 0).toLocaleString("pt-BR", { maximumFractionDigits: d, minimumFractionDigits: d });
 const shortDate = (v?: string | null) => (v ? new Date(`${v}T12:00:00`).toLocaleDateString("pt-BR") : "—");
-const calcEconomia25 = (anual: number, years = 25) => {
+const projecao25 = (gastoMensal: number) => {
   let total = 0;
-  for (let i = 1; i <= years; i++) total += anual * Math.pow(1.08, i - 1);
+  for (let i = 1; i <= 25; i++) total += gastoMensal * 12 * Math.pow(1.08, i - 1);
+  return total;
+};
+const economia25 = (anual: number) => {
+  let total = 0;
+  for (let i = 1; i <= 25; i++) total += anual * Math.pow(1.08, i - 1);
   return total;
 };
 
 export function ProposalPrintable({ data }: { data: ProposalPdfData }) {
-  const { proposal, client, company, seller, items, financing, cityIrradiance } = data;
+  const { proposal, client, company, seller, items, financing } = data;
   const fechado = Boolean(proposal.valor_fechado_modo);
-  const showItems = !fechado;
 
-  const monthly = monthKeys.map(
-    (k) => (cityIrradiance?.[k] || cityIrradiance?.hsp_medio || proposal.hsp_usado || 5)
-      * (proposal.kwp_instalado || 0) * 30 * (proposal.performance_ratio || 0.8)
-  );
-  const chartMax = Math.max(...monthly, 1);
-  const economia25 = calcEconomia25(proposal.economia_anual || 0);
   const logo = company?.logo_url || logoUrl;
-  const brandName = company?.nome_fantasia || "ENERGIZA SOLAR";
+  const numero = proposal.numero || "—";
+  const clienteNome = client?.nome || "Cliente";
+  const cidadeUf = `${proposal.cidade_projeto || client?.endereco_cidade || "—"}/${proposal.uf_projeto || client?.endereco_uf || ""}`;
+  const emissao = shortDate(new Date().toISOString().slice(0, 10));
+  const validade = shortDate(proposal.valido_ate);
+  const vendedor = seller?.nome || "Equipe comercial";
+  const contatoVendedor = seller?.telefone || seller?.email || company?.telefone || "(38) 9895-9015";
 
-  const escopo: Array<[string, string]> = [
-    [`Módulos ${proposal.modulo_marca || ""} ${proposal.modulo_modelo || ""}`.trim(), `${proposal.qtd_modulos || 0} × ${proposal.modulo_potencia_w || 0}W`],
-    [`Inversor ${proposal.inversor_marca || ""} ${proposal.inversor_modelo || ""}`.trim(), `${proposal.qtd_inversores || 1} × ${proposal.inversor_potencia_kw || 0}kW`],
-    ["Estrutura de fixação certificada", `${proposal.qtd_modulos || 0} placas`],
-    ["Cabos, conectores e proteções", "Incluso"],
-    ["Projeto técnico + ART", "Incluso"],
-    ["Instalação, comissionamento e homologação", "Incluso"],
-  ];
+  const contaLuz = client?.conta_luz_media || 0;
+  const consumo = proposal.consumo_estimado_kwh || 0;
+  const concessionaria = client?.concessionaria || "—";
+  const ligacao = client?.tipo_ligacao || proposal.tipo_ligacao || "—";
+  const tarifa = proposal.tarifa_kwh || 0;
+  const projecao = projecao25(contaLuz);
 
-  const itemRows: Array<[string, string, string]> = items && items.length > 0
-    ? items.map((it) => [String(it.descricao ?? ""), `${num(Number(it.quantidade) || 0, 0)} ${it.unidade ?? ""}`, money(Number(it.valor_total) || 0)])
+  const kwp = proposal.kwp_instalado || 0;
+  const geracao = proposal.geracao_estimada_mensal || 0;
+  const economiaMensal = proposal.economia_mensal || 0;
+  const economiaAnual = proposal.economia_anual || economiaMensal * 12;
+  const payback = proposal.payback_anos || 0;
+  const paybackDesc = proposal.payback_descontado_anos || payback;
+  const econ25 = economia25(economiaAnual);
+
+  const equipamentos: Array<[string, string, string]> = items && items.length > 0
+    ? items.map((it) => [String(it.descricao ?? ""), `${num(Number(it.quantidade) || 0)} ${it.unidade ?? ""}`.trim(), money(Number(it.valor_total) || 0)])
     : [
-        [`Módulo ${proposal.modulo_marca || ""} ${proposal.modulo_modelo || ""} ${proposal.modulo_potencia_w || ""}W`, `${proposal.qtd_modulos || 0}x`, money(proposal.custo_modulos || 0)],
-        [`Inversor ${proposal.inversor_marca || ""} ${proposal.inversor_modelo || ""} ${proposal.inversor_potencia_kw || ""}kW`, `${proposal.qtd_inversores || 1}x`, money(proposal.custo_inversor || 0)],
-        ["Estrutura", `${proposal.qtd_modulos || 0} placas`, money(proposal.custo_estrutura || 0)],
-        ["Cabos e proteções", "1 conjunto", money(proposal.custo_cabos_protecoes || 0)],
-        ["Projeto + ART", "1 serviço", money(proposal.custo_projeto_art || 0)],
-        ["Instalação e mão de obra", "1 serviço", money(proposal.custo_mao_obra || 0)],
+        [
+          `Módulo ${proposal.modulo_marca || ""} ${proposal.modulo_modelo || ""} ${proposal.modulo_potencia_w ? `${proposal.modulo_potencia_w}W` : ""}`.trim() || "Módulo fotovoltaico",
+          `${proposal.qtd_modulos || 0} un`,
+          fechado ? "—" : money(proposal.custo_modulos || 0),
+        ],
+        [
+          `Inversor ${proposal.inversor_marca || ""} ${proposal.inversor_modelo || ""} ${proposal.inversor_potencia_kw ? `${proposal.inversor_potencia_kw}kW` : ""}`.trim() || "Inversor",
+          `${proposal.qtd_inversores || 1} un`,
+          fechado ? "—" : money(proposal.custo_inversor || 0),
+        ],
+        ["Estrutura de fixação", `${proposal.qtd_modulos || 0} placas`, fechado ? "—" : money(proposal.custo_estrutura || 0)],
+        ["Cabos, conectores e proteções", "1 conjunto", fechado ? "—" : money(proposal.custo_cabos_protecoes || 0)],
+        ["Projeto técnico e ART", "1 serviço", fechado ? "—" : money(proposal.custo_projeto_art || 0)],
+        ["Instalação e comissionamento", "1 serviço", fechado ? "—" : money(proposal.custo_mao_obra || 0)],
       ];
 
+  const valorTotal = proposal.valor_total || 0;
+  const fin = financing?.[0];
+  const entrada = fin?.entrada || 0;
+  const prazo = fin?.prazo_meses || 0;
+  const parcela = fin?.valor_parcela || 0;
+  const saldo = Math.max(valorTotal - entrada, 0);
+
   return (
-    <div className="proposal-printable" style={rootStyle}>
+    <div id="proposta-pdf" className="proposta-root">
       <style>{css}</style>
 
-      {/* ====== PÁGINA 1 — CAPA ====== */}
-      <section className="pp-page pp-cover">
-        <div className="pp-cover-bg" />
-        <div className="pp-cover-wave" />
-        <div className="pp-cover-wave2" />
-
-        <header className="pp-cover-header">
-          <div className="pp-cover-logo-chip">
-            <img src={logo} alt={brandName} />
-          </div>
-          <span className="pp-cover-tag">Energia que transforma</span>
-        </header>
-
-        <div className="pp-cover-body">
-          <span className="pp-eyebrow">PROPOSTA COMERCIAL</span>
-          <h1 className="pp-cover-title">
-            Sistema fotovoltaico
-            <br />
-            sob medida para você
-          </h1>
-          <span className="pp-cover-divider" />
-          <span className="pp-cover-number">Nº {proposal.numero || "—"}</span>
+      {/* ===== PÁGINA 1 — CAPA ===== */}
+      <section className="page page-cover">
+        <div className="cover-top">
+          <img src={logo} alt="Energiza Solar" className="cover-logo" />
+          <div className="cover-eyebrow">PROPOSTA COMERCIAL</div>
+          <div className="cover-numero">Nº {numero}</div>
         </div>
 
-        <div className="pp-cover-card">
-          <span className="pp-card-label">Preparada para</span>
-          <h2 className="pp-cover-client">{client?.nome || "Cliente"}</h2>
-
-          <div className="pp-cover-meta">
-            <Meta label="Local" value={`${proposal.cidade_projeto || client?.endereco_cidade || "—"}/${proposal.uf_projeto || client?.endereco_uf || ""}`} />
-            <Meta label="Emissão" value={shortDate(new Date().toISOString().slice(0, 10))} />
-            <Meta label="Válida até" value={shortDate(proposal.valido_ate)} />
-          </div>
-
-          <div className="pp-cover-seller">
-            <span className="pp-card-label">Consultor responsável</span>
-            <span className="pp-cover-meta-value">
-              {seller?.nome || "Equipe comercial"}
-              {seller?.telefone ? ` · ${seller.telefone}` : company?.telefone ? ` · ${company.telefone}` : ""}
-            </span>
-          </div>
-        </div>
-      </section>
-
-      {/* ====== PÁGINA 2 — VISÃO GERAL ====== */}
-      <section className="pp-page pp-content">
-        <PageHeader logo={logo} brandName={brandName} />
-
-        <h2 className="pp-h1">Sua proposta de energia solar</h2>
-        <p className="pp-lead">
-          Olá {client?.nome?.split(" ")[0] || "cliente"}, este é o sistema fotovoltaico dimensionado para o seu consumo,
-          com economia projetada para os próximos 25 anos.
-        </p>
-
-        <div className="pp-kpis">
-          <Kpi label="Potência" value={`${num(proposal.kwp_instalado, 2)} kWp`} />
-          <Kpi label="Geração" value={`${num(proposal.geracao_estimada_mensal)} kWh/mês`} />
-          <Kpi label="Economia/mês" value={money(proposal.economia_mensal || 0)} />
-          <Kpi label="Payback" value={`${num(proposal.payback_anos, 1)} anos`} />
+        <div className="cover-mid">
+          <div className="cover-mid-label">PREPARADA PARA</div>
+          <h1 className="cover-cliente">{clienteNome}</h1>
+          <div className="cover-cidade">{cidadeUf}</div>
         </div>
 
-        <div className="pp-two-col">
-          <div>
-            <h3 className="pp-h3">Situação atual</h3>
-            <div className="pp-info">
-              <InfoRow label="Conta de luz" value={money(client?.conta_luz_media || 0)} />
-              <InfoRow label="Consumo" value={`${num(proposal.consumo_estimado_kwh)} kWh/mês`} />
-              <InfoRow label="Tarifa" value={`${money(proposal.tarifa_kwh || 0)}/kWh`} />
-              <InfoRow label="Concessionária" value={client?.concessionaria || "—"} />
+        <div className="cover-bot">
+          <div className="cover-grid">
+            <div>
+              <div className="cover-meta-label">EMISSÃO</div>
+              <div className="cover-meta-value">{emissao}</div>
+            </div>
+            <div>
+              <div className="cover-meta-label">VENDEDOR RESPONSÁVEL</div>
+              <div className="cover-meta-value">{vendedor}</div>
+            </div>
+            <div>
+              <div className="cover-meta-label">VALIDADE</div>
+              <div className="cover-meta-value">{validade}</div>
+            </div>
+            <div>
+              <div className="cover-meta-label">CONTATO</div>
+              <div className="cover-meta-value">{contatoVendedor}</div>
             </div>
           </div>
-          <div>
-            <h3 className="pp-h3">Escopo do fornecimento</h3>
-            <ul className="pp-bullets">
-              {escopo.map(([label, qty]) => (
-                <li key={label}>
-                  <span className="pp-bullet-dot" />
-                  <span className="pp-bullet-text">{label}</span>
-                  <span className="pp-bullet-qty">{qty}</span>
-                </li>
-              ))}
-            </ul>
+        </div>
+
+        <div className="cover-stripe" />
+      </section>
+
+      {/* ===== PÁGINA 2 — DIAGNÓSTICO + SISTEMA ===== */}
+      <section className="page">
+        <PageHeader logo={logo} numero={numero} cliente={clienteNome} />
+
+        <h2 className="h1">Sua situação atual de energia</h2>
+        <div className="diag-grid">
+          <Field label="Conta de luz mensal" value={money(contaLuz)} />
+          <Field label="Consumo estimado" value={`${num(consumo)} kWh`} />
+          <Field label="Concessionária" value={concessionaria} />
+          <Field label="Tipo de ligação" value={String(ligacao)} />
+          <Field label="Tarifa aplicada" value={`${money(tarifa)}/kWh`} />
+        </div>
+
+        <div className="quote-block">
+          Sem energia solar, em 25 anos com reajustes médios de 8% a.a., o gasto projetado seria de
+          {" "}<strong className="quote-value">{money(projecao)}</strong>.
+        </div>
+
+        <h2 className="h1" style={{ marginTop: 14 }}>O sistema dimensionado para você</h2>
+        <div className="kpi-grid">
+          <Kpi label="Potência" value={`${num(kwp, 2)} kWp`} />
+          <Kpi label="Geração mensal" value={`${num(geracao)} kWh`} />
+          <Kpi label="Economia mensal" value={money(economiaMensal)} />
+          <Kpi label="Payback" value={`${num(payback, 1)} anos`} />
+        </div>
+
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th style={{ width: "22%" }}>Qtd.</th>
+              <th style={{ width: "24%", textAlign: "right" }}>Valor</th>
+            </tr>
+          </thead>
+          <tbody>
+            {equipamentos.map((row, i) => (
+              <tr key={i}>
+                <td>{row[0]}</td>
+                <td>{row[1]}</td>
+                <td style={{ textAlign: "right" }}>{row[2]}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <PageFooter />
+      </section>
+
+      {/* ===== PÁGINA 3 — ECONOMIA + INVESTIMENTO ===== */}
+      <section className="page">
+        <PageHeader logo={logo} numero={numero} cliente={clienteNome} />
+
+        <h2 className="h1">Quanto você vai economizar</h2>
+        <div className="hero-num">
+          <div className="hero-num-label">ECONOMIA ESTIMADA EM 25 ANOS</div>
+          <div className="hero-num-value">{money(econ25)}</div>
+        </div>
+
+        <table className="data-table">
+          <tbody>
+            <tr><td>Economia mensal</td><td style={{ textAlign: "right" }}>{money(economiaMensal)}</td></tr>
+            <tr><td>Economia anual</td><td style={{ textAlign: "right" }}>{money(economiaAnual)}</td></tr>
+            <tr><td>Payback simples</td><td style={{ textAlign: "right" }}>{num(payback, 1)} anos</td></tr>
+            <tr><td>Payback descontado</td><td style={{ textAlign: "right" }}>{num(paybackDesc, 1)} anos</td></tr>
+          </tbody>
+        </table>
+
+        <p className="caption">
+          A partir do {Math.ceil(payback)}º ano, o sistema passa a gerar economia líquida.
+        </p>
+
+        <h2 className="h1" style={{ marginTop: 18 }}>Como pagar</h2>
+        <div className="invest-card">
+          <div className="invest-label">INVESTIMENTO TOTAL</div>
+          <div className="invest-value">{money(valorTotal)}</div>
+          <div className="invest-divider" />
+          <div className="invest-line">
+            {prazo > 0 ? (
+              <>Entrada {money(entrada)} · Saldo {money(saldo)} em {prazo}× {money(parcela)}{fin?.banco ? ` · ${fin.banco}` : ""}</>
+            ) : (
+              <>Pagamento à vista · {money(valorTotal)}</>
+            )}
           </div>
         </div>
 
-        <h3 className="pp-h3" style={{ marginTop: 14 }}>Geração mensal estimada (kWh)</h3>
-        <div className="pp-chart">
-          {monthly.map((v, i) => (
-            <div key={months[i]} className="pp-bar-wrap">
-              <div className="pp-bar" style={{ height: `${Math.max(6, 100 * (v / chartMax))}px` }} />
-              <span className="pp-bar-label">{months[i]}</span>
+        <PageFooter />
+      </section>
+
+      {/* ===== PÁGINA 4 — GARANTIAS, EXECUÇÃO, FECHAMENTO ===== */}
+      <section className="page page-last">
+        <PageHeader logo={logo} numero={numero} cliente={clienteNome} />
+
+        <h2 className="h1">Garantias e prazos</h2>
+        <table className="data-table">
+          <thead>
+            <tr><th>Item</th><th style={{ width: "40%", textAlign: "right" }}>Prazo</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Módulo solar</td><td style={{ textAlign: "right" }}>{proposal.garantia_modulo_anos || 25} anos</td></tr>
+            <tr><td>Inversor</td><td style={{ textAlign: "right" }}>{proposal.garantia_inversor_anos || 10} anos</td></tr>
+            <tr><td>Instalação</td><td style={{ textAlign: "right" }}>{proposal.garantia_instalacao_anos || 1} ano</td></tr>
+            <tr><td>Execução</td><td style={{ textAlign: "right" }}>{proposal.prazo_execucao_dias_uteis || 30} dias úteis</td></tr>
+            <tr><td>Homologação</td><td style={{ textAlign: "right" }}>até {proposal.prazo_homologacao_dias || 90} dias</td></tr>
+          </tbody>
+        </table>
+
+        <h2 className="h1" style={{ marginTop: 18 }}>Fluxo de execução</h2>
+        <div className="steps">
+          {["Pagamento", "Projeto", "Instalação", "Homologação", "Sistema operando"].map((s, i, arr) => (
+            <div key={s} className="step">
+              <div className="step-row">
+                <div className="step-num">{i + 1}</div>
+                {i < arr.length - 1 ? <div className="step-line" /> : null}
+              </div>
+              <div className="step-label">{s}</div>
             </div>
           ))}
         </div>
 
-        <PageFooter company={company} pageNumber={2} totalPages={3} />
-      </section>
-
-      {/* ====== PÁGINA 3 — INVESTIMENTO ====== */}
-      <section className="pp-page pp-content">
-        <PageHeader logo={logo} brandName={brandName} />
-
-        <h2 className="pp-h1">Investimento e condições</h2>
-
-        <div className="pp-pay-hero">
-          <span className="pp-pay-label">Investimento total à vista</span>
-          <span className="pp-pay-value">{money(proposal.valor_total || 0)}</span>
-          <span className="pp-pay-sub">Economia projetada em 25 anos: {money(economia25)}</span>
+        <div className="validity-block">
+          Esta proposta é válida até {validade}. Após esta data, valores podem sofrer alteração devido a flutuações cambiais e tarifárias.
         </div>
 
-        {showItems ? (
-          <>
-            <h3 className="pp-h3">Composição do investimento</h3>
-            <table className="pp-table">
-              <thead>
-                <tr>
-                  <th>Item</th>
-                  <th style={{ width: 90 }}>Qtd</th>
-                  <th style={{ width: 110, textAlign: "right" }}>Valor</th>
-                </tr>
-              </thead>
-              <tbody>
-                {itemRows.map((row, idx) => (
-                  <tr key={idx}>
-                    <td>{row[0]}</td>
-                    <td>{row[1]}</td>
-                    <td style={{ textAlign: "right" }}>{row[2]}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </>
-        ) : null}
-
-        {financing.length ? (
-          <>
-            <h3 className="pp-h3">Opções de financiamento</h3>
-            <div className="pp-fin-grid">
-              {financing.slice(0, 4).map((f) => (
-                <div key={f.id} className="pp-fin-card">
-                  <span className="pp-fin-bank">{f.banco}</span>
-                  <span className="pp-fin-value">
-                    {f.prazo_meses}x {money(f.valor_parcela || 0)}
-                  </span>
-                  <span className="pp-fin-sub">
-                    Total: {money(((f.valor_parcela || 0) * (f.prazo_meses || 0)) + (f.entrada || 0))}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </>
-        ) : null}
-
-        <div className="pp-two-col" style={{ marginTop: 14 }}>
-          <div>
-            <h3 className="pp-h3">Garantias e prazos</h3>
-            <div className="pp-info">
-              <InfoRow label="Módulos" value={`${proposal.garantia_modulo_anos || 25} anos`} />
-              <InfoRow label="Inversor" value={`${proposal.garantia_inversor_anos || 10} anos`} />
-              <InfoRow label="Instalação" value={`${proposal.garantia_instalacao_anos || 1} ano`} />
-              <InfoRow label="Execução" value={`${proposal.prazo_execucao_dias_uteis || 30} dias úteis`} />
-              <InfoRow label="Homologação" value={`Até ${proposal.prazo_homologacao_dias || 90} dias`} />
-            </div>
-          </div>
-          <div>
-            <h3 className="pp-h3">Etapas do projeto</h3>
-            <ol className="pp-timeline">
-              {["Pagamento", "Projeto", "Instalação", "Homologação", "Operando"].map((step, i) => (
-                <li key={step}>
-                  <span className="pp-step-num">{i + 1}</span>
-                  <span>{step}</span>
-                </li>
-              ))}
-            </ol>
-            <p className="pp-validity">Proposta válida até {shortDate(proposal.valido_ate)}</p>
-          </div>
+        <div className="institutional">
+          <div className="inst-name">ENERGIZA SOLAR LTDA</div>
+          <div className="inst-line">CNPJ 66.050.090/0001-33</div>
+          {company?.endereco ? <div className="inst-line">{company.endereco}</div> : null}
+          <div className="inst-line">energizasollar@gmail.com · (38) 9895-9015</div>
         </div>
 
-        {proposal.observacoes_comerciais ? (
-          <p className="pp-obs">
-            <strong>Observações: </strong>
-            {String(proposal.observacoes_comerciais).replace(/[*#_]/g, "").slice(0, 280)}
-          </p>
-        ) : null}
-
-        <div className="pp-sign">
-          <div>
-            <span className="pp-sign-line" />
-            <span className="pp-sign-label">{client?.nome || "Cliente"}</span>
-          </div>
-          <div>
-            <span className="pp-sign-line" />
-            <span className="pp-sign-label">{brandName}</span>
-          </div>
-        </div>
-
-        <PageFooter company={company} pageNumber={3} totalPages={3} />
+        <PageFooter />
       </section>
     </div>
   );
 }
 
-function PageHeader({ logo, brandName }: { logo: string; brandName: string }) {
+function PageHeader({ logo, numero, cliente }: { logo: string; numero: string; cliente: string }) {
   return (
-    <header className="pp-head">
-      <img src={logo} alt={brandName} className="pp-head-logo" />
-      <span className="pp-head-rule" />
+    <header className="page-head">
+      <img src={logo} alt="Energiza Solar" className="head-logo" />
+      <div className="head-meta">Nº {numero} · {cliente}</div>
     </header>
   );
 }
 
-function PageFooter({ company, pageNumber, totalPages }: { company: any; pageNumber: number; totalPages: number }) {
+function PageFooter() {
   return (
-    <footer className="pp-foot">
-      <span>
-        {company?.email || "energizasolar@gmail.com"} · {company?.telefone || "(38) 9895-9015"}
-      </span>
-      <span>
-        {pageNumber}/{totalPages}
-      </span>
+    <footer className="page-foot">
+      CNPJ 66.050.090/0001-33 · energizasollar@gmail.com · (38) 9895-9015
     </footer>
+  );
+}
+
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="field">
+      <div className="field-label">{label}</div>
+      <div className="field-value">{value}</div>
+    </div>
   );
 }
 
 function Kpi({ label, value }: { label: string; value: string }) {
   return (
-    <div className="pp-kpi">
-      <span className="pp-kpi-label">{label}</span>
-      <span className="pp-kpi-value">{value}</span>
+    <div className="kpi">
+      <div className="kpi-label">{label}</div>
+      <div className="kpi-value">{value}</div>
     </div>
   );
 }
-
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="pp-info-row">
-      <span className="pp-info-label">{label}</span>
-      <span className="pp-info-value">{value}</span>
-    </div>
-  );
-}
-
-function Meta({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="pp-meta-col">
-      <span className="pp-card-label">{label}</span>
-      <span className="pp-cover-meta-value">{value}</span>
-    </div>
-  );
-}
-
-const rootStyle: React.CSSProperties = {
-  fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-  color: COLORS.navy,
-  background: "#F8FAFC",
-};
 
 const css = `
-.proposal-printable * { box-sizing: border-box; }
-.proposal-printable { font-size: 11px; line-height: 1.5; }
-.pp-page {
-  width: 210mm; min-height: 297mm; margin: 0 auto; padding: 18mm 16mm;
-  background: ${COLORS.white}; position: relative; page-break-after: always;
-  break-after: page; overflow: hidden;
+.proposta-root, .proposta-root * { box-sizing: border-box; }
+.proposta-root {
+  --brand-primary: #F59E0B;
+  --brand-primary-dark: #B45309;
+  --brand-accent: #0F766E;
+  --ink-900: #111827;
+  --ink-700: #374151;
+  --ink-500: #6B7280;
+  --ink-300: #D1D5DB;
+  --ink-100: #F3F4F6;
+  --paper: #FFFFFF;
+  font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  color: var(--ink-700);
+  font-size: 11px;
+  line-height: 1.45;
+  background: #E5E7EB;
 }
-.pp-page:last-of-type { page-break-after: auto; break-after: auto; }
 
-/* ===== COVER ===== */
-.pp-cover { padding: 0; color: ${COLORS.white}; }
-.pp-cover-bg {
-  position: absolute; inset: 0;
-  background: linear-gradient(135deg, ${COLORS.greenDark} 0%, #064E3B 60%, ${COLORS.navy} 100%);
+.proposta-root .page {
+  width: 210mm;
+  height: 297mm;
+  padding: 18mm 16mm;
+  background: var(--paper);
+  color: var(--ink-700);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  margin: 0 auto 16px;
+  page-break-after: always;
+  break-after: page;
+  overflow: hidden;
 }
-.pp-cover-wave {
-  position: absolute; left: 0; right: 0; bottom: 0; height: 35%;
-  background: radial-gradient(ellipse at 20% 100%, ${COLORS.green}55 0%, transparent 60%);
-}
-.pp-cover-wave2 {
-  position: absolute; left: 0; right: 0; bottom: 0; height: 22%;
-  background: radial-gradient(ellipse at 80% 100%, ${COLORS.yellow}33 0%, transparent 55%);
-}
-.pp-cover-header {
-  position: relative; z-index: 1;
-  padding: 16mm 16mm 0; display: flex; align-items: center; justify-content: space-between;
-}
-.pp-cover-logo-chip {
-  background: ${COLORS.white}; border-radius: 10px; padding: 8px 14px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
-}
-.pp-cover-logo-chip img { height: 38px; display: block; }
-.pp-cover-tag { color: #BBF7D0; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; }
+.proposta-root .page.page-last { page-break-after: avoid; break-after: avoid; }
 
-.pp-cover-body { position: relative; z-index: 1; padding: 22mm 16mm 0; }
-.pp-eyebrow { color: #BBF7D0; font-size: 11px; letter-spacing: 4px; font-weight: 600; }
-.pp-cover-title {
-  margin: 14px 0 0; color: ${COLORS.white}; font-weight: 800;
-  font-size: 38px; line-height: 1.12; letter-spacing: -0.5px;
+/* ===== HEADER / FOOTER ===== */
+.page-head {
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--ink-300);
+  padding-bottom: 10px; margin-bottom: 16px;
 }
-.pp-cover-divider { display: block; width: 64px; height: 4px; background: ${COLORS.yellow}; margin: 16px 0 12px; border-radius: 2px; }
-.pp-cover-number { color: ${COLORS.white}; font-size: 14px; font-weight: 600; }
+.head-logo { height: 28px; display: block; }
+.head-meta { font-size: 10px; color: var(--ink-500); font-weight: 500; letter-spacing: 0.04em; }
 
-.pp-cover-card {
-  position: absolute; left: 16mm; right: 16mm; bottom: 16mm; z-index: 2;
-  background: ${COLORS.white}; color: ${COLORS.navy};
-  border-radius: 16px; padding: 22px 24px;
-  box-shadow: 0 24px 60px rgba(0,0,0,0.25);
-}
-.pp-card-label { color: ${COLORS.slate}; font-size: 9px; letter-spacing: 1.2px; text-transform: uppercase; font-weight: 600; }
-.pp-cover-client { margin: 4px 0 14px; font-size: 22px; font-weight: 800; color: ${COLORS.navy}; }
-.pp-cover-meta {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
-  padding-top: 14px; border-top: 1px solid ${COLORS.border};
-}
-.pp-meta-col { display: flex; flex-direction: column; gap: 3px; }
-.pp-cover-meta-value { color: ${COLORS.navy}; font-size: 11px; font-weight: 600; }
-.pp-cover-seller { margin-top: 14px; padding-top: 12px; border-top: 1px solid ${COLORS.border}; display: flex; flex-direction: column; gap: 3px; }
-
-/* ===== HEADER / FOOTER conteúdo ===== */
-.pp-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-.pp-head-logo { height: 28px; }
-.pp-head-rule { flex: 1; height: 2px; background: linear-gradient(90deg, ${COLORS.green}, ${COLORS.yellow}); border-radius: 2px; }
-.pp-foot {
-  position: absolute; left: 16mm; right: 16mm; bottom: 10mm;
-  display: flex; justify-content: space-between; color: ${COLORS.slate}; font-size: 9px;
-  padding-top: 8px; border-top: 1px solid ${COLORS.border};
+.page-foot {
+  margin-top: auto;
+  border-top: 1px solid var(--ink-300);
+  padding-top: 8px;
+  font-size: 9.5px;
+  color: var(--ink-500);
+  text-align: center;
 }
 
 /* ===== TIPOGRAFIA ===== */
-.pp-h1 { font-size: 22px; font-weight: 800; color: ${COLORS.navy}; margin: 4px 0 8px; letter-spacing: -0.3px; }
-.pp-h3 { font-size: 11px; font-weight: 700; color: ${COLORS.navy}; margin: 12px 0 8px; text-transform: uppercase; letter-spacing: 0.6px; }
-.pp-lead { font-size: 11.5px; color: ${COLORS.navy}; margin: 0 0 14px; line-height: 1.6; }
+.proposta-root .h1 {
+  font-size: 22px; font-weight: 700; color: var(--ink-900);
+  margin: 0 0 12px; line-height: 1.2; letter-spacing: -0.01em;
+}
+.proposta-root .h2 { font-size: 16px; font-weight: 600; color: var(--ink-900); margin: 0 0 8px; line-height: 1.2; }
+.caption { font-size: 11px; color: var(--ink-500); font-style: italic; margin: 8px 0 0; }
+
+/* ===== CAPA ===== */
+.page-cover { padding: 0; }
+.cover-top {
+  height: 35%; padding: 18mm 16mm 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+}
+.cover-logo { height: 60px; display: block; }
+.cover-eyebrow {
+  font-size: 12px; font-weight: 500; color: var(--ink-500);
+  letter-spacing: 0.2em;
+}
+.cover-numero { font-size: 18px; font-weight: 700; color: var(--ink-900); }
+
+.cover-mid {
+  height: 40%; background: var(--ink-100);
+  padding: 28px 16mm; display: flex; flex-direction: column; justify-content: center; gap: 10px;
+}
+.cover-mid-label {
+  font-size: 10px; font-weight: 500; color: var(--ink-500); letter-spacing: 0.15em;
+}
+.cover-cliente {
+  margin: 0; font-size: 32px; font-weight: 700; color: var(--ink-900);
+  line-height: 1.15; letter-spacing: -0.01em;
+}
+.cover-cidade { font-size: 14px; font-weight: 400; color: var(--ink-700); }
+
+.cover-bot {
+  height: 25%; padding: 22px 16mm 28px;
+  display: flex; align-items: center;
+}
+.cover-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px 32px; width: 100%;
+}
+.cover-meta-label {
+  font-size: 9.5px; font-weight: 500; color: var(--ink-500);
+  letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 4px;
+}
+.cover-meta-value { font-size: 11.5px; font-weight: 500; color: var(--ink-900); }
+
+.cover-stripe {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: var(--brand-primary);
+}
+
+/* ===== DIAGNÓSTICO ===== */
+.diag-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px 24px;
+  margin-bottom: 14px;
+}
+.field-label {
+  font-size: 9.5px; color: var(--ink-500); font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px;
+}
+.field-value { font-size: 14px; font-weight: 600; color: var(--ink-900); }
+
+.quote-block {
+  background: var(--ink-100);
+  border-left: 3px solid var(--brand-accent);
+  padding: 14px 16px;
+  font-size: 11.5px; color: var(--ink-700);
+  margin: 6px 0 0;
+}
+.quote-value { font-size: 18px; font-weight: 700; color: var(--ink-900); }
 
 /* ===== KPIs ===== */
-.pp-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 4px 0 14px; }
-.pp-kpi {
-  background: linear-gradient(135deg, ${COLORS.greenSoft}, #F0FDF4);
-  border: 1px solid #BBF7D0; border-radius: 10px; padding: 10px 12px;
-  display: flex; flex-direction: column; gap: 4px;
+.kpi-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+  margin: 4px 0 14px;
 }
-.pp-kpi-label { font-size: 9px; color: ${COLORS.greenDark}; text-transform: uppercase; letter-spacing: 0.6px; font-weight: 600; }
-.pp-kpi-value { font-size: 16px; font-weight: 800; color: ${COLORS.navy}; }
-
-/* ===== TWO COL + INFO ===== */
-.pp-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.pp-info { background: ${COLORS.slateSoft}; border-radius: 10px; padding: 4px 12px; }
-.pp-info-row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid ${COLORS.border}; font-size: 10px; }
-.pp-info-row:last-child { border-bottom: none; }
-.pp-info-label { color: ${COLORS.slate}; }
-.pp-info-value { color: ${COLORS.navy}; font-weight: 600; }
-
-/* ===== BULLETS ===== */
-.pp-bullets { list-style: none; margin: 0; padding: 12px; background: ${COLORS.slateSoft}; border-radius: 10px; }
-.pp-bullets li { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 10px; color: ${COLORS.navy}; }
-.pp-bullet-dot { width: 6px; height: 6px; border-radius: 50%; background: ${COLORS.green}; flex-shrink: 0; }
-.pp-bullet-text { flex: 1; }
-.pp-bullet-qty { color: ${COLORS.slate}; font-size: 9px; font-weight: 600; }
-
-/* ===== CHART ===== */
-.pp-chart {
-  display: grid; grid-template-columns: repeat(12, 1fr); gap: 6px;
-  align-items: end; height: 130px; padding: 6px 4px 18px;
-  border-bottom: 1px solid ${COLORS.border};
+.kpi { padding: 4px 0; }
+.kpi-label {
+  font-size: 9.5px; color: var(--ink-500); font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px;
 }
-.pp-bar-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.pp-bar {
-  width: 18px; background: linear-gradient(180deg, ${COLORS.green}, ${COLORS.greenDark});
-  border-radius: 3px 3px 0 0; min-height: 6px;
+.kpi-value { font-size: 16px; font-weight: 700; color: var(--ink-900); }
+
+/* ===== TABELA ===== */
+.data-table {
+  width: 100%; border-collapse: collapse; margin: 4px 0 0;
 }
-.pp-bar-label { font-size: 8px; color: ${COLORS.slate}; }
-
-/* ===== PAGAMENTO ===== */
-.pp-pay-hero {
-  background: linear-gradient(135deg, ${COLORS.greenDark}, ${COLORS.navy});
-  color: ${COLORS.white}; border-radius: 14px; padding: 22px;
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
-  margin-bottom: 14px; position: relative; overflow: hidden;
+.data-table thead th {
+  background: var(--ink-100); color: var(--ink-700);
+  font-size: 9.5px; font-weight: 600; text-align: left;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--ink-300);
 }
-.pp-pay-hero::after {
-  content: ""; position: absolute; right: -40px; top: -40px; width: 160px; height: 160px;
-  background: radial-gradient(circle, ${COLORS.yellow}55, transparent 70%);
+.data-table tbody td {
+  padding: 9px 10px; font-size: 11px; color: var(--ink-700);
+  border-bottom: 1px solid var(--ink-300);
 }
-.pp-pay-label { color: #BBF7D0; font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 600; }
-.pp-pay-value { color: ${COLORS.white}; font-size: 32px; font-weight: 800; letter-spacing: -0.5px; }
-.pp-pay-sub { color: #BBF7D0; font-size: 10px; }
+.data-table tbody tr:last-child td { border-bottom: none; }
 
-/* ===== TABLE ===== */
-.pp-table { width: 100%; border-collapse: collapse; border-radius: 8px; overflow: hidden; border: 1px solid ${COLORS.border}; }
-.pp-table thead { background: ${COLORS.navy}; }
-.pp-table th { color: ${COLORS.white}; font-size: 9px; font-weight: 700; padding: 8px 10px; text-align: left; text-transform: uppercase; letter-spacing: 0.6px; }
-.pp-table td { padding: 8px 10px; font-size: 10px; color: ${COLORS.navy}; border-top: 1px solid ${COLORS.border}; }
-.pp-table tbody tr:nth-child(even) td { background: ${COLORS.slateSoft}; }
-
-/* ===== FINANCING ===== */
-.pp-fin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.pp-fin-card { border: 1px solid ${COLORS.border}; border-radius: 10px; padding: 10px 12px; background: ${COLORS.white}; display: flex; flex-direction: column; gap: 2px; }
-.pp-fin-bank { font-weight: 700; color: ${COLORS.navy}; font-size: 10px; }
-.pp-fin-value { color: ${COLORS.greenDark}; font-weight: 800; font-size: 13px; }
-.pp-fin-sub { color: ${COLORS.slate}; font-size: 9px; }
-
-/* ===== TIMELINE ===== */
-.pp-timeline { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
-.pp-timeline li {
-  display: flex; align-items: center; gap: 10px; padding: 7px 10px;
-  background: ${COLORS.slateSoft}; border-radius: 8px; font-size: 10px; color: ${COLORS.navy}; font-weight: 600;
+/* ===== HERO NUM (economia) ===== */
+.hero-num { text-align: center; padding: 18px 0 14px; }
+.hero-num-label {
+  font-size: 10px; color: var(--ink-500); font-weight: 500;
+  letter-spacing: 0.15em; margin-bottom: 8px;
 }
-.pp-step-num {
-  width: 22px; height: 22px; border-radius: 50%; background: ${COLORS.green}; color: ${COLORS.white};
-  display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700;
+.hero-num-value { font-size: 36px; font-weight: 700; color: var(--brand-accent); line-height: 1.1; }
+
+/* ===== INVESTIMENTO ===== */
+.invest-card {
+  border: 1px solid var(--ink-300); border-radius: 4px;
+  padding: 20px; margin-top: 4px;
 }
-.pp-validity { font-size: 9px; color: ${COLORS.slate}; margin-top: 8px; }
+.invest-label {
+  font-size: 10px; color: var(--ink-500); font-weight: 500;
+  letter-spacing: 0.15em;
+}
+.invest-value { font-size: 28px; font-weight: 700; color: var(--ink-900); margin: 6px 0 12px; line-height: 1.1; }
+.invest-divider { height: 1px; background: var(--ink-300); margin: 0 0 12px; }
+.invest-line { font-size: 11px; color: var(--ink-700); }
 
-.pp-obs { font-size: 9px; color: ${COLORS.slate}; line-height: 1.6; margin-top: 12px; padding: 10px 12px; background: ${COLORS.slateSoft}; border-radius: 8px; border-left: 3px solid ${COLORS.green}; }
-.pp-obs strong { color: ${COLORS.navy}; }
+/* ===== STEPS ===== */
+.steps {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 0;
+  margin-top: 8px;
+}
+.step { display: flex; flex-direction: column; align-items: stretch; }
+.step-row { display: flex; align-items: center; }
+.step-num {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--brand-primary); color: #FFFFFF;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; flex: 0 0 24px;
+}
+.step-line { flex: 1; height: 1px; background: var(--ink-300); }
+.step-label { font-size: 10px; font-weight: 500; color: var(--ink-700); margin-top: 8px; }
 
-/* ===== ASSINATURA ===== */
-.pp-sign { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 22px; }
-.pp-sign > div { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.pp-sign-line { display: block; width: 100%; height: 1px; background: ${COLORS.navy}; margin-top: 22px; }
-.pp-sign-label { font-size: 9px; color: ${COLORS.slate}; }
+/* ===== VALIDITY + INSTITUCIONAL ===== */
+.validity-block {
+  background: var(--ink-100); padding: 16px;
+  font-size: 11px; color: var(--ink-700); margin-top: 18px; border-radius: 2px;
+}
+.institutional { margin-top: 16px; }
+.inst-name { font-size: 12px; font-weight: 700; color: var(--ink-900); margin-bottom: 4px; }
+.inst-line { font-size: 10px; color: var(--ink-700); line-height: 1.5; }
 `;

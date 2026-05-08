@@ -3,21 +3,14 @@ import { ProposalPrintable } from "./ProposalPrintable";
 import type { ProposalPdfData } from "./types";
 
 /**
- * Gera o PDF da proposta a partir do componente HTML branded.
- *
- * Estratégia: monta o `<ProposalPrintable />` num container off-screen,
- * espera o paint + carregamento de imagens (logo, fotos), renderiza cada
- * página A4 com html2canvas-pro (suporta oklch/color-mix) e exporta com jsPDF.
+ * Gera PDF A4 (4 páginas) a partir do componente HTML imprimível,
+ * usando html2pdf.js que respeita @page + page-break-after.
  */
 export async function buildProposalBlob(data: ProposalPdfData): Promise<Blob> {
   if (typeof window === "undefined") throw new Error("PDF só pode ser gerado no navegador.");
-  const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
-    import("html2canvas-pro"),
-    import("jspdf"),
-  ]);
+  const html2pdf = (await import("html2pdf.js")).default;
 
   const host = document.createElement("div");
-  // Off-screen mas renderizável (html2canvas precisa de layout real).
   host.style.position = "fixed";
   host.style.top = "-10000px";
   host.style.left = "0";
@@ -26,31 +19,13 @@ export async function buildProposalBlob(data: ProposalPdfData): Promise<Blob> {
   host.style.background = "#FFFFFF";
   document.body.appendChild(host);
 
-  // Isola o host de variáveis/herança do app, forçando cores em formato seguro (hex).
-  const isolation = document.createElement("style");
-  isolation.textContent = `
-    .proposal-printable, .proposal-printable * {
-      --background: #FFFFFF; --foreground: #0F172A;
-      --primary: #16A34A; --primary-foreground: #FFFFFF;
-      --secondary: #F1F5F9; --secondary-foreground: #0F172A;
-      --muted: #F1F5F9; --muted-foreground: #475569;
-      --accent: #FBBF24; --accent-foreground: #0F172A;
-      --border: #E2E8F0; --input: #E2E8F0; --ring: #16A34A;
-      --card: #FFFFFF; --card-foreground: #0F172A;
-      --popover: #FFFFFF; --popover-foreground: #0F172A;
-      --destructive: #DC2626; --destructive-foreground: #FFFFFF;
-    }
-  `;
-  document.head.appendChild(isolation);
-
   const root = createRoot(host);
   await new Promise<void>((resolve) => {
     root.render(<ProposalPrintable data={data} />);
-    // 2 frames + tick para garantir layout + fontes
-    requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 60)));
+    requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 80)));
   });
 
-  // Aguarda imagens (logo, fotos) carregarem completamente.
+  // Aguarda imagens
   const imgs = Array.from(host.querySelectorAll("img"));
   await Promise.all(
     imgs.map((img) =>
@@ -64,39 +39,24 @@ export async function buildProposalBlob(data: ProposalPdfData): Promise<Blob> {
   );
   if (document.fonts?.ready) await document.fonts.ready;
 
-  // Failsafe: sanitiza qualquer cor computada que ainda esteja em oklch().
-  const props = ["color", "backgroundColor", "borderColor", "borderTopColor", "borderRightColor", "borderBottomColor", "borderLeftColor", "outlineColor", "fill", "stroke"] as const;
-  const fallback: Record<string, string> = { color: "#0F172A", backgroundColor: "transparent", borderColor: "#E2E8F0", borderTopColor: "#E2E8F0", borderRightColor: "#E2E8F0", borderBottomColor: "#E2E8F0", borderLeftColor: "#E2E8F0", outlineColor: "#E2E8F0", fill: "#0F172A", stroke: "#0F172A" };
-  host.querySelectorAll<HTMLElement>("*").forEach((el) => {
-    const cs = getComputedStyle(el);
-    for (const p of props) {
-      const v = cs[p as any] as string;
-      if (v && v.includes("oklch")) (el.style as any)[p] = fallback[p];
-    }
-  });
+  const target = host.querySelector("#proposta-pdf") as HTMLElement | null;
+  if (!target) throw new Error("Conteúdo da proposta não encontrado.");
 
   try {
-    const pages = Array.from(host.querySelectorAll<HTMLElement>(".pp-page"));
-    const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
-
-    for (let i = 0; i < pages.length; i++) {
-      const canvas = await html2canvas(pages[i], {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#FFFFFF",
-        logging: false,
-        imageSmoothing: true,
-        imageSmoothingQuality: "high",
-      });
-      if (i > 0) pdf.addPage("a4", "portrait");
-      pdf.addImage(canvas.toDataURL("image/jpeg", 0.96), "JPEG", 0, 0, 210, 297, undefined, "FAST");
-    }
-
-    const blob = pdf.output("blob");
+    const blob: Blob = await html2pdf()
+      .from(target)
+      .set({
+        margin: 0,
+        filename: `proposta-energiza-${data.proposal.numero || "sem-numero"}.pdf`,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, letterRendering: true, logging: false, backgroundColor: "#FFFFFF" },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait", compress: true },
+        pagebreak: { mode: ["css", "legacy"] },
+      })
+      .outputPdf("blob");
     return blob;
   } finally {
     root.unmount();
     host.remove();
-    isolation.remove();
   }
 }
