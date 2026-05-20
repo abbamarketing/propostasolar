@@ -266,14 +266,19 @@ export function useDuplicateProposal(id?: string) {
       const { id: _id, numero: _numero, created_at: _created, updated_at: _updated, enviada_em: _env, aceita_em: _ace, recusada_em: _rec, pdf_url: _pdf, deleted_at: _del, ...copy } = data;
       const { data: newProposal, error: insertError } = await api.from("proposals").insert({ ...copy, status: "rascunho", numero: null }).select("id").single();
       if (insertError) throw insertError;
-      const [items, financing, photos] = await Promise.all([
-        api.from("proposal_items").select("*").eq("proposal_id", id),
-        api.from("proposal_financing_options").select("*").eq("proposal_id", id),
-        api.from("proposal_photos").select("*").eq("proposal_id", id),
-      ]);
-      if (items.data?.length) await api.from("proposal_items").insert(items.data.map(({ id: _i, proposal_id: _p, ...row }: any) => ({ ...row, proposal_id: newProposal.id })));
-      if (financing.data?.length) await api.from("proposal_financing_options").insert(financing.data.map(({ id: _i, proposal_id: _p, ...row }: any) => ({ ...row, proposal_id: newProposal.id })));
-      if (photos.data?.length) await api.from("proposal_photos").insert(photos.data.map(({ id: _i, proposal_id: _p, ...row }: any) => ({ ...row, proposal_id: newProposal.id })));
+      try {
+        const [items, financing, photos] = await Promise.all([
+          api.from("proposal_items").select("*").eq("proposal_id", id),
+          api.from("proposal_financing_options").select("*").eq("proposal_id", id),
+          api.from("proposal_photos").select("*").eq("proposal_id", id),
+        ]);
+        if (items.data?.length) await api.from("proposal_items").insert(items.data.map(({ id: _i, proposal_id: _p, ...row }: any) => ({ ...row, proposal_id: newProposal.id })));
+        if (financing.data?.length) await api.from("proposal_financing_options").insert(financing.data.map(({ id: _i, proposal_id: _p, ...row }: any) => ({ ...row, proposal_id: newProposal.id })));
+        if (photos.data?.length) await api.from("proposal_photos").insert(photos.data.map(({ id: _i, proposal_id: _p, ...row }: any) => ({ ...row, proposal_id: newProposal.id })));
+      } catch (copyError) {
+        await api.from("proposals").update({ deleted_at: new Date().toISOString() }).eq("id", newProposal.id);
+        throw copyError;
+      }
       return newProposal.id as string;
     },
     onSuccess: () => {
