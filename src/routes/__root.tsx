@@ -1,10 +1,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Outlet, Link, createRootRouteWithContext, HeadContent, Scripts } from "@tanstack/react-router";
+import { Link, Outlet, createRootRouteWithContext, useRouter } from "@tanstack/react-router";
 import { Toaster } from "sonner";
-
 import { AuthProvider } from "@/hooks/use-auth";
 import { CommandPalette } from "@/components/command-palette";
-import appCss from "../styles.css?url";
 
 function NotFoundComponent() {
   return (
@@ -28,52 +26,45 @@ function NotFoundComponent() {
   );
 }
 
-export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "ENERGIZA SOLAR — Propostas Solares" },
-      { name: "description", content: "SaaS para gerar propostas comerciais de energia solar em PDF." },
-      { name: "author", content: "ENERGIZA SOLAR LTDA" },
-      { property: "og:title", content: "ENERGIZA SOLAR — Propostas Solares" },
-      { property: "og:description", content: "Fluxo guiado para vendedores dimensionarem sistemas solares e emitirem propostas." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-    ],
-    links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
-      {
-        rel: "icon",
-        href: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='13' fill='%2316A34A'/%3E%3Cg stroke='%2316A34A' stroke-width='5' stroke-linecap='round'%3E%3Cpath d='M32 4v10M32 50v10M4 32h10M50 32h10M12 12l7 7M45 45l7 7M52 12l-7 7M19 45l-7 7'/%3E%3C/g%3E%3C/svg%3E",
-      },
-    ],
-  }),
-  shellComponent: RootShell,
-  component: RootComponent,
-  notFoundComponent: NotFoundComponent,
-});
-
-function RootShell({ children }: { children: React.ReactNode }) {
+function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+  const router = useRouter();
   return (
-    <html lang="pt-BR">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        {children}
-        <Scripts />
-      </body>
-    </html>
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="max-w-md text-center">
+        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-destructive" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+          </svg>
+        </div>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Algo deu errado</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Ocorreu um erro inesperado. Tente novamente.</p>
+        {import.meta.env.DEV && error.message && (
+          <pre className="mt-4 max-h-40 overflow-auto rounded-md bg-muted p-3 text-left font-mono text-xs text-destructive">{error.message}</pre>
+        )}
+        <div className="mt-6 flex items-center justify-center gap-3">
+          <button
+            onClick={() => { router.invalidate(); reset(); }}
+            className="inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            Tentar novamente
+          </button>
+          <a href="/" className="inline-flex items-center justify-center rounded-xl border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent">
+            Ir para início
+          </a>
+        </div>
+      </div>
+    </div>
   );
 }
 
+export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  component: RootComponent,
+  notFoundComponent: NotFoundComponent,
+  errorComponent: DefaultErrorComponent,
+});
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
