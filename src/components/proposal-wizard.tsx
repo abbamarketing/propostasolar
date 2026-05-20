@@ -1,11 +1,9 @@
-import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useBlocker, useNavigate } from "@tanstack/react-router";
 import { BatteryCharging, Building2, Check, ChevronsUpDown, CircleAlert, CircleHelp, Clock, Copy, Download, ExternalLink, FileText, GripVertical, Home, ImageIcon, Loader2, LogOut, Plus, RefreshCcw, Save, Search, Tractor, Trash2, Upload, Warehouse } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { ClientForm, type ClientFormValues } from "@/components/client-form";
-import { MoneyInput } from "@/components/inputs/money-input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Switch } from "@/components/ui/switch";
@@ -127,7 +124,7 @@ export function ProposalWizard({ proposalId, initialClientId }: ProposalWizardPr
         {step >= 4 ? <ReviewPdfStep proposalId={autosave.activeId} draft={autosave.draft} onExit={exitWizard} /> : null}
       </main>
       <footer className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-4 py-3 backdrop-blur md:px-8">
-        <div className="flex items-center justify-between gap-3"><Button variant="outline" onClick={back}>Voltar</Button><span className="hidden text-sm text-muted-foreground md:inline">Salvo automaticamente</span>{step >= 4 ? <Button variant="secondary" onClick={exitWizard}><LogOut className="h-4 w-4" />Sair</Button> : <Button onClick={next}>Próximo</Button>}</div>
+        <div className="flex items-center justify-between gap-3"><Button variant="outline" onClick={back}>Voltar</Button><span className="hidden text-sm text-muted-foreground md:inline">Salvo automaticamente</span>{step >= 4 ? <Button variant="secondary" onClick={exitWizard}><LogOut className="h-4 w-4" />Sair</Button> : <Button onClick={next} disabled={autosave.isSaving}>Próximo</Button>}</div>
       </footer>
     </div>
   );
@@ -393,8 +390,7 @@ function isCompatibleInverter(inverter: InverterRow, kwp: number, tipo?: string 
 }
 
 function CitySelect({ cities, value, onSelect }: { cities: CityRow[]; value: string; onSelect: (city: CityRow) => void }) { const [open, setOpen] = useState(false); return <Popover open={open} onOpenChange={setOpen}><PopoverTrigger asChild><Button variant="outline" className="justify-between"><span>{value === "/" ? "Cidade do projeto" : value}</span><ChevronsUpDown className="h-4 w-4 opacity-60" /></Button></PopoverTrigger><PopoverContent className="w-80 p-0"><Command><CommandInput placeholder="Buscar cidade" /><CommandList><CommandEmpty>Nenhuma cidade.</CommandEmpty><CommandGroup>{cities.map((city) => <CommandItem key={city.id} value={`${city.cidade} ${city.uf}`} onSelect={() => { onSelect(city); setOpen(false); }}>{city.cidade}/{city.uf}<span className="ml-auto text-xs text-muted-foreground">HSP {city.hsp_medio}</span></CommandItem>)}</CommandGroup></CommandList></Command></PopoverContent></Popover>; }
-function TariffField({ value, onChange }: { value: number; onChange: (value: number) => void }) { const form = useForm<{ tarifa: number }>({ resolver: zodResolver(z.object({ tarifa: z.number().min(0) })), values: { tarifa: value } }); return <Form {...form}><MoneyInput control={form.control} name="tarifa" label="Tarifa kWh" decimals={4} /><input type="hidden" value={value} onChange={() => undefined} />{form.watch("tarifa") !== value ? <SyncValue value={form.watch("tarifa")} onChange={onChange} /> : null}</Form>; }
-function SyncValue({ value, onChange }: { value: number; onChange: (value: number) => void }) { useEffect(() => onChange(value), [onChange, value]); return null; }
+function TariffField({ value, onChange }: { value: number; onChange: (value: number) => void }) { return <NumberField label="Tarifa kWh" value={value} step="0.0001" onChange={onChange} />; }
 function NumberField({ label, value, hint, step = "1", onChange }: { label: string; value: number; hint?: string; step?: string; onChange: (value: number) => void }) { return <div className="space-y-2"><label className="text-sm font-medium">{label}</label><Input type="number" step={step} value={Number.isFinite(value) ? value : 0} onChange={(event) => onChange(event.target.valueAsNumber || 0)} />{hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}</div>; }
 function SliderField({ label, value, min, max, step, suffix, tooltip, onChange }: { label: string; value: number; min: number; max: number; step: number; suffix: string; tooltip: string; onChange: (value: number) => void }) { return <TooltipProvider><div className="space-y-3"><div className="flex items-center justify-between gap-2"><label className="inline-flex items-center gap-1 text-sm font-medium">{label}<Tooltip><TooltipTrigger asChild><CircleHelp className="h-3.5 w-3.5 text-muted-foreground" /></TooltipTrigger><TooltipContent>{tooltip}</TooltipContent></Tooltip></label><span className="text-sm font-bold">{suffix === "%" ? `${Math.round(value * 100)}%` : value}</span></div><Slider min={min} max={max} step={step} value={[value]} onValueChange={([next]) => onChange(next ?? value)} /></div></TooltipProvider>; }
 function SizingSummary({ contaMedia, tarifa, disponibilidade, meta, hsp, pr, sizing, kwpInstalled, realGenerationMonthly }: { contaMedia: number; tarifa: number; disponibilidade: number; meta: number; hsp: number; pr: number; sizing: ReturnType<typeof calculateSolarSizing>; kwpInstalled: number; realGenerationMonthly: number }) { return <aside className="xl:sticky xl:top-40 xl:self-start"><Card className="shadow-soft"><CardHeader><CardTitle>Resumo do dimensionamento</CardTitle></CardHeader><CardContent className="space-y-5"><SummaryGroup title="Análise da conta" rows={[["Conta média", money(contaMedia)], ["Tarifa", `${money(tarifa)}/kWh`], ["Consumo estimado", `${number(sizing.consumoEstimadoKwh)} kWh/mês`], ["Disponibilidade", `-${number(disponibilidade)} kWh`], ["A compensar", `${number(sizing.energiaACompensarKwh)} kWh/mês`], [`× meta ${Math.round(meta * 100)}%`, `${number(sizing.energiaACompensarKwh)} kWh/mês`]]} /><SummaryGroup title="Sistema necessário" rows={[["HSP", `${number(hsp, 2)} h/dia`], ["PR", `${Math.round(pr * 100)}%`], ["kWp necessário", `${number(sizing.kWpNecessario, 2)} kWp`], ["kWp instalado", kwpInstalled ? `${number(kwpInstalled, 2)} kWp` : "—"], ["Geração mensal", `${number(realGenerationMonthly)} kWh/mês`], ["Geração anual", `${number(realGenerationMonthly * 12)} kWh/ano`], ["Cobertura", sizing.consumoEstimadoKwh > 0 ? `${number((realGenerationMonthly / sizing.consumoEstimadoKwh) * 100)}%` : "—"]]} /></CardContent></Card></aside>; }
