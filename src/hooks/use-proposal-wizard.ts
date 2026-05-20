@@ -357,6 +357,7 @@ export function useProposalAutosave({ proposalId, initialClientId }: { proposalI
   const queryClient = useQueryClient();
   const proposal = useProposal(proposalId);
   const [draft, setDraft] = useState<ProposalDraft>(() => ({ ...emptyDraft, client_id: initialClientId ?? "" }));
+  const activeIdRef = useRef(proposalId);
   const [activeId, setActiveId] = useState(proposalId);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [savedAt, setSavedAt] = useState<Date | null>(null);
@@ -382,18 +383,20 @@ export function useProposalAutosave({ proposalId, initialClientId }: { proposalI
     mutationFn: async (payload: ProposalDraft) => {
       if (!payload.client_id) return null;
       setSaveState("saving");
-      if (!activeId) {
+      if (!activeIdRef.current) {
         const [{ data: userData }, companyId] = await Promise.all([supabase.auth.getUser(), getCompanyId()]);
         const { data, error } = await supabase.from("proposals").insert({ ...toPayload(payload), client_id: payload.client_id, company_id: companyId, vendedor_id: userData.user?.id ?? null }).select().single();
         if (error) throw error;
+        activeIdRef.current = data.id;
         return data;
       }
-      const { data, error } = await supabase.from("proposals").update(toPayload(payload)).eq("id", activeId).select().single();
+      const { data, error } = await supabase.from("proposals").update(toPayload(payload)).eq("id", activeIdRef.current).select().single();
       if (error) throw error;
       return data;
     },
     onSuccess: (data) => {
       if (!data) return;
+      activeIdRef.current = data.id;
       setActiveId(data.id);
       setSaveState("saved");
       setSavedAt(new Date());
